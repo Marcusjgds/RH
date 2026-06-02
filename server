@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recrutement</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <div class="logo">
+      <span class="logo-bracket">[</span>
+      <span id="site-name-nav">RECRUTEMENT</span>
+      <span class="logo-bracket">]</span>
+    </div>
+    <div class="nav-links">
+      <a href="#postes" class="nav-link">Postes ouverts</a>
+      <button class="btn-ghost" id="btn-open-rh-login">Espace RH</button>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg-grid"></div>
+  <div class="hero-content">
+    <div class="hero-tag">Rejoins l'équipe</div>
+    <h1 id="hero-title">Construis quelque chose<br /><span class="accent">d'exceptionnel.</span></h1>
+    <p id="hero-sub">Nous recrutons des passionnés prêts à s'investir dans un projet ambitieux.</p>
+    <a href="#postes" class="btn-primary">Voir les postes <span class="arrow">↓</span></a>
+  </div>
+  <div class="hero-deco">
+    <div class="deco-ring r1"></div>
+    <div class="deco-ring r2"></div>
+    <div class="deco-ring r3"></div>
+  </div>
+</section>
+
+<!-- POSTES -->
+<section id="postes">
+  <div class="section-header">
+    <span class="section-tag">Opportunités</span>
+    <h2>Postes ouverts</h2>
+  </div>
+  <div class="filters">
+    <button class="filter-btn active" data-cat="all">Tous</button>
+    <button class="filter-btn" data-cat="WL">WL</button>
+    <button class="filter-btn" data-cat="STAFF">STAFF</button>
+    <button class="filter-btn" data-cat="ANIMATION">ANIMATION</button>
+    <button class="filter-btn" data-cat="DÉVELOPPEMENT">DÉVELOPPEMENT</button>
+  </div>
+  <div class="postes-grid" id="postes-grid">
+    <!-- Injecté par JS -->
+  </div>
+  <div class="empty-state" id="empty-postes" style="display:none">
+    <p>Aucun poste disponible pour le moment.</p>
+  </div>
+</section>
+
+<!-- MODAL POSTULER -->
+<div class="modal-overlay" id="modal-postuler" style="display:none">
+  <div class="modal">
+    <button class="modal-close" id="close-postuler">&times;</button>
+    <div class="modal-header">
+      <span class="modal-tag">Candidature</span>
+      <h3 id="modal-poste-title">Nom du poste</h3>
+    </div>
+    <form id="form-candidature" novalidate>
+      <div class="form-row">
+        <div class="field">
+          <label>Prénom</label>
+          <input type="text" id="f-prenom" placeholder="Ton prénom" required />
+        </div>
+        <div class="field">
+          <label>Nom</label>
+          <input type="text" id="f-nom" placeholder="Ton nom" required />
+        </div>
+      </div>
+      <div class="field">
+        <label>Pseudo RP</label>
+        <input type="text" id="f-rp" placeholder="Ton pseudo en jeu" required />
+      </div>
+      <div class="field">
+        <label>Adresse mail</label>
+        <input type="email" id="f-email" placeholder="exemple@mail.com" required />
+      </div>
+      <div class="field">
+        <label>Lettre de motivation</label>
+        <textarea id="f-motivation" rows="5" placeholder="Explique pourquoi tu veux rejoindre l'équipe..." required></textarea>
+      </div>
+      <div class="field">
+        <label>CV <span class="label-opt">(lien Google Drive, PDF en ligne...)</span></label>
+        <input type="text" id="f-cv" placeholder="https://drive.google.com/..." />
+      </div>
+      <div class="field">
+        <label>Informations supplémentaires</label>
+        <textarea id="f-extra" rows="3" placeholder="Expériences, disponibilités, projets passés..."></textarea>
+      </div>
+      <div class="form-error" id="form-error" style="display:none"></div>
+      <button type="submit" class="btn-submit" id="btn-submit-cand">
+        <span id="btn-submit-text">Envoyer ma candidature</span>
+        <span id="btn-submit-loader" style="display:none">Envoi...</span>
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL RH LOGIN -->
+<div class="modal-overlay" id="modal-rh-login" style="display:none">
+  <div class="modal modal-sm">
+    <button class="modal-close" id="close-rh-login">&times;</button>
+    <div class="modal-header">
+      <span class="modal-tag">Accès restreint</span>
+      <h3>Espace RH</h3>
+    </div>
+    <form id="form-rh-login" novalidate>
+      <div class="field">
+        <label>Mot de passe</label>
+        <input type="password" id="rh-password" placeholder="••••••••" required />
+      </div>
+      <div class="form-error" id="login-error" style="display:none">Mot de passe incorrect.</div>
+      <button type="submit" class="btn-submit">Accéder</button>
+    </form>
+  </div>
+</div>
+
+<!-- DASHBOARD RH -->
+<div id="rh-dashboard" style="display:none">
+  <div class="rh-header">
+    <div class="logo">
+      <span class="logo-bracket">[</span>RH<span class="logo-bracket">]</span>
+    </div>
+    <div class="rh-nav">
+      <button class="rh-tab active" data-tab="candidatures">Candidatures</button>
+      <button class="rh-tab" data-tab="postes">Gérer les postes</button>
+      <button class="rh-tab" data-tab="config">Configuration</button>
+      <button class="btn-ghost" id="btn-logout">Déconnexion</button>
+    </div>
+  </div>
+
+  <!-- Tab: Candidatures -->
+  <div class="rh-content" id="tab-candidatures">
+    <div class="rh-section-header">
+      <h2>Candidatures</h2>
+      <div class="rh-filters">
+        <select id="filter-status">
+          <option value="all">Tous les statuts</option>
+          <option value="en_attente">En attente</option>
+          <option value="en_charge">Pris en charge</option>
+          <option value="accepte">Accepté</option>
+          <option value="refuse">Refusé</option>
+        </select>
+        <select id="filter-cat-cand">
+          <option value="all">Toutes catégories</option>
+          <option value="WL">WL</option>
+          <option value="STAFF">STAFF</option>
+          <option value="ANIMATION">ANIMATION</option>
+          <option value="DÉVELOPPEMENT">DÉVELOPPEMENT</option>
+        </select>
+      </div>
+    </div>
+    <div class="candidatures-list" id="candidatures-list"></div>
+    <div class="empty-state" id="empty-cands" style="display:none"><p>Aucune candidature reçue.</p></div>
+  </div>
+
+  <!-- Tab: Postes -->
+  <div class="rh-content" id="tab-postes" style="display:none">
+    <div class="rh-section-header">
+      <h2>Gérer les postes</h2>
+      <button class="btn-primary" id="btn-nouveau-poste">+ Nouveau poste</button>
+    </div>
+    <div class="postes-rh-list" id="postes-rh-list"></div>
+  </div>
+
+  <!-- Tab: Config -->
+  <div class="rh-content" id="tab-config" style="display:none">
+    <div class="config-card">
+      <h2>Configuration EmailJS</h2>
+      <p class="config-info">Ces paramètres sont sauvegardés localement dans le navigateur. Tu peux les modifier à tout moment.</p>
+      <div class="field">
+        <label>Public Key (User ID)</label>
+        <input type="text" id="cfg-public-key" placeholder="ex: AbCdEfGhIjKlMnOp" />
+      </div>
+      <div class="field">
+        <label>Service ID</label>
+        <input type="text" id="cfg-service-id" placeholder="ex: service_xxxxxxx" />
+      </div>
+      <div class="field">
+        <label>Template ID — Mail RH (nouvelle candidature)</label>
+        <input type="text" id="cfg-tpl-rh" placeholder="ex: template_xxxxxxx" />
+      </div>
+      <div class="field">
+        <label>Template ID — Accusé de réception (candidat)</label>
+        <input type="text" id="cfg-tpl-accuse" placeholder="ex: template_xxxxxxx" />
+      </div>
+      <div class="field">
+        <label>Template ID — Prise en charge</label>
+        <input type="text" id="cfg-tpl-charge" placeholder="ex: template_xxxxxxx" />
+      </div>
+      <div class="field">
+        <label>Template ID — Accepté</label>
+        <input type="text" id="cfg-tpl-accept" placeholder="ex: template_xxxxxxx" />
+      </div>
+      <div class="field">
+        <label>Template ID — Refusé</label>
+        <input type="text" id="cfg-tpl-refuse" placeholder="ex: template_xxxxxxx" />
+      </div>
+      <div class="field">
+        <label>Email RH (destinataire des candidatures)</label>
+        <input type="email" id="cfg-rh-email" placeholder="rh@tonserveur.com" />
+      </div>
+      <div class="field">
+        <label>Nom du serveur / communauté</label>
+        <input type="text" id="cfg-server-name" placeholder="Mon Serveur" />
+      </div>
+      <div class="field">
+        <label>Mot de passe RH</label>
+        <input type="password" id="cfg-password" placeholder="Nouveau mot de passe" />
+        <small>Laisse vide pour ne pas changer</small>
+      </div>
+      <button class="btn-primary" id="btn-save-config">Sauvegarder la configuration</button>
+      <div class="config-success" id="config-success" style="display:none">✓ Configuration sauvegardée</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL NOUVEAU POSTE -->
+<div class="modal-overlay" id="modal-nouveau-poste" style="display:none">
+  <div class="modal">
+    <button class="modal-close" id="close-nouveau-poste">&times;</button>
+    <div class="modal-header">
+      <span class="modal-tag">RH</span>
+      <h3 id="nouveau-poste-title">Nouveau poste</h3>
+    </div>
+    <form id="form-poste" novalidate>
+      <input type="hidden" id="poste-edit-id" />
+      <div class="field">
+        <label>Nom du poste</label>
+        <input type="text" id="poste-nom" placeholder="ex: Modérateur Senior" required />
+      </div>
+      <div class="field">
+        <label>Catégorie</label>
+        <select id="poste-cat" required>
+          <option value="">Choisir...</option>
+          <option value="WL">WL</option>
+          <option value="STAFF">STAFF</option>
+          <option value="ANIMATION">ANIMATION</option>
+          <option value="DÉVELOPPEMENT">DÉVELOPPEMENT</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Description</label>
+        <textarea id="poste-desc" rows="4" placeholder="Décris le rôle et les missions..." required></textarea>
+      </div>
+      <div class="field">
+        <label>Prérequis</label>
+        <textarea id="poste-prereq" rows="3" placeholder="Ex: 16 ans minimum, expérience requise..."></textarea>
+      </div>
+      <button type="submit" class="btn-submit" id="btn-submit-poste">Créer le poste</button>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL CANDIDATURE DETAIL -->
+<div class="modal-overlay" id="modal-cand-detail" style="display:none">
+  <div class="modal modal-lg">
+    <button class="modal-close" id="close-cand-detail">&times;</button>
+    <div class="modal-header">
+      <span class="modal-tag" id="detail-cat">STAFF</span>
+      <h3 id="detail-poste">Nom du poste</h3>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-col">
+        <div class="detail-block">
+          <span class="detail-label">Candidat</span>
+          <span class="detail-val" id="detail-nom"></span>
+        </div>
+        <div class="detail-block">
+          <span class="detail-label">Pseudo RP</span>
+          <span class="detail-val" id="detail-rp"></span>
+        </div>
+        <div class="detail-block">
+          <span class="detail-label">Email</span>
+          <span class="detail-val" id="detail-email"></span>
+        </div>
+        <div class="detail-block">
+          <span class="detail-label">CV</span>
+          <span class="detail-val" id="detail-cv"></span>
+        </div>
+      </div>
+      <div class="detail-col">
+        <div class="detail-block">
+          <span class="detail-label">Lettre de motivation</span>
+          <p class="detail-text" id="detail-motivation"></p>
+        </div>
+        <div class="detail-block">
+          <span class="detail-label">Informations supplémentaires</span>
+          <p class="detail-text" id="detail-extra"></p>
+        </div>
+      </div>
+    </div>
+    <div class="detail-actions" id="detail-actions"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<footer>
+  <p id="footer-text">© 2025 — Espace Recrutement</p>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
