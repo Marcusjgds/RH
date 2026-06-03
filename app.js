@@ -66,7 +66,9 @@ function applyConfig() {
   const name = config.serverName || 'RECRUTEMENT';
   document.getElementById('site-name-nav').textContent = name;
   document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} — ${name}`;
-  if (config.publicKey) emailjs.init(config.publicKey);
+  if (config.publicKey) {
+    emailjs.init({ publicKey: config.publicKey });
+  }
 }
 
 /* ============================================================
@@ -488,7 +490,6 @@ function bindConfigForm() {
     if (newPwd) config.password = newPwd;
     saveConfig();
     applyConfig();
-    if (config.publicKey) emailjs.init(config.publicKey);
     const ok = document.getElementById('config-success');
     ok.style.display = '';
     setTimeout(() => ok.style.display = 'none', 3000);
@@ -498,71 +499,87 @@ function bindConfigForm() {
 /* ============================================================
    EMAILJS — ENVOI MAILS
    ============================================================ */
+function ejsReady() {
+  if (!config.publicKey || !config.serviceId) {
+    console.warn('[EmailJS] Public Key ou Service ID manquant.');
+    return false;
+  }
+  return true;
+}
+
 async function sendMailCandidature(c) {
-  if (!config.tplRH || !config.serviceId || !config.rhEmail) return;
+  if (!ejsReady() || !config.tplRH || !config.rhEmail) {
+    console.warn('[EmailJS] Config mail RH incomplète.');
+    return;
+  }
   try {
-    await emailjs.send(config.serviceId, config.tplRH, {
-      to_email:     config.rhEmail,
-      server_name:  config.serverName,
-      poste_nom:    c.posteNom,
-      poste_cat:    c.posteCat,
-      candidat_nom: `${c.prenom} ${c.nom}`,
-      candidat_rp:  c.rp,
+    const res = await emailjs.send(config.serviceId, config.tplRH, {
+      to_email:       config.rhEmail,
+      server_name:    config.serverName,
+      poste_nom:      c.posteNom,
+      poste_cat:      c.posteCat,
+      candidat_nom:   `${c.prenom} ${c.nom}`,
+      candidat_rp:    c.rp,
       candidat_email: c.email,
-      motivation:   c.motiv,
-      cv:           c.cv || 'Non fourni',
-      extra:        c.extra || 'Aucune',
-      date:         c.date,
+      motivation:     c.motiv,
+      cv:             c.cv || 'Non fourni',
+      extra:          c.extra || 'Aucune',
+      date:           c.date,
     });
-  } catch(err) { console.warn('EmailJS RH error:', err); }
+    console.log('[EmailJS] Mail RH envoyé :', res.status);
+  } catch(err) { console.error('[EmailJS] Erreur mail RH :', err); }
 }
 
 async function sendMailAccuse(c) {
-  if (!config.tplAccuse || !config.serviceId) return;
+  if (!ejsReady() || !config.tplAccuse) { console.warn('[EmailJS] Template accusé manquant.'); return; }
   try {
-    await emailjs.send(config.serviceId, config.tplAccuse, {
-      to_email:     c.email,
-      to_name:      c.prenom,
-      server_name:  config.serverName,
-      poste_nom:    c.posteNom,
+    const res = await emailjs.send(config.serviceId, config.tplAccuse, {
+      to_email:    c.email,
+      to_name:     c.prenom,
+      server_name: config.serverName,
+      poste_nom:   c.posteNom,
     });
-  } catch(err) { console.warn('EmailJS accusé error:', err); }
+    console.log('[EmailJS] Accusé de réception envoyé :', res.status);
+  } catch(err) { console.error('[EmailJS] Erreur accusé :', err); }
 }
 
 async function sendMailCharge(c) {
-  if (!config.tplCharge || !config.serviceId) return;
+  if (!ejsReady() || !config.tplCharge) { console.warn('[EmailJS] Template prise en charge manquant.'); return; }
   try {
-    await emailjs.send(config.serviceId, config.tplCharge, {
+    const res = await emailjs.send(config.serviceId, config.tplCharge, {
       to_email:    c.email,
       to_name:     c.prenom,
       server_name: config.serverName,
       poste_nom:   c.posteNom,
     });
-  } catch(err) { console.warn('EmailJS charge error:', err); }
+    console.log('[EmailJS] Mail prise en charge envoyé :', res.status);
+  } catch(err) { console.error('[EmailJS] Erreur prise en charge :', err); }
 }
 
 async function sendMailAccept(c) {
-  if (!config.tplAccept || !config.serviceId) return;
+  if (!ejsReady() || !config.tplAccept) { console.warn('[EmailJS] Template accepté manquant.'); return; }
   try {
-    await emailjs.send(config.serviceId, config.tplAccept, {
+    const res = await emailjs.send(config.serviceId, config.tplAccept, {
       to_email:    c.email,
       to_name:     c.prenom,
       server_name: config.serverName,
       poste_nom:   c.posteNom,
     });
-  } catch(err) { console.warn('EmailJS accept error:', err); }
+    console.log('[EmailJS] Mail accepté envoyé :', res.status);
+  } catch(err) { console.error('[EmailJS] Erreur accepté :', err); }
 }
 
 async function sendMailRefuse(c) {
-  if (!config.tplRefuse || !config.serviceId) return;
+  if (!ejsReady() || !config.tplRefuse) { console.warn('[EmailJS] Template refusé manquant.'); return; }
   try {
-    await emailjs.send(config.serviceId, config.tplRefuse, {
+    const res = await emailjs.send(config.serviceId, config.tplRefuse, {
       to_email:    c.email,
       to_name:     c.prenom,
       server_name: config.serverName,
       poste_nom:   c.posteNom,
     });
-  } catch(err) { console.warn('EmailJS refuse error:', err); }
+    console.log('[EmailJS] Mail refusé envoyé :', res.status);
+  } catch(err) { console.error('[EmailJS] Erreur refusé :', err); }
 }
 
 /* ============================================================
