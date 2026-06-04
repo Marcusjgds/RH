@@ -6,7 +6,6 @@
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyA04uU6I2b4PDvjwHyeUuQvKrs5Jo3_56Y",
   authDomain: "site-11-58f78.firebaseapp.com",
-  projectId: "REMPLACE_PROJECT_ID",
   projectId: "site-11-58f78",
   storageBucket: "site-11-58f78.firebasestorage.app",
   messagingSenderId: "1010449432094",
