@@ -1,30 +1,43 @@
 /* ============================================================
-   APP.JS — Site de recrutement — Web3Forms
+   APP.JS — Site de recrutement — Firebase Firestore (temps réel)
    ============================================================ */
 
-// Formsubmit — gratuit, illimité, envoie à n'importe quelle adresse
-// L'email RH est configuré dans Espace RH → Configuration
+// ── FIREBASE CONFIG (à remplir avec tes infos Firebase)
+const FIREBASE_CONFIG = {
+  apiKey:            "REMPLACE_PAR_TON_API_KEY",
+  authDomain:        "REMPLACE_PAR_TON_AUTH_DOMAIN",
+  projectId:         "REMPLACE_PAR_TON_PROJECT_ID",
+  storageBucket:     "REMPLACE_PAR_TON_STORAGE_BUCKET",
+  messagingSenderId: "REMPLACE_PAR_TON_SENDER_ID",
+  appId:             "REMPLACE_PAR_TON_APP_ID",
+};
+
+// ── FORMSUBMIT
 const FORMSUBMIT_URL = (email) => `https://formsubmit.co/ajax/${encodeURIComponent(email)}`;
 
-// ── CONFIG PAR DÉFAUT
-const DEFAULT_CONFIG = {
-  rhEmail:    '',
-  serverName: 'MON SERVEUR',
-  password:   'rh2025',
-};
+// ── CONFIG LOCALE (mot de passe, nom serveur, email RH — reste en localStorage)
+const DEFAULT_CONFIG = { rhEmail: '', serverName: 'MON SERVEUR', password: 'rh2025' };
 
 // ── STATE
 let config       = loadConfig();
-let postes       = loadPostes();
-let candidatures = loadCandidatures();
+let postes       = [];
+let candidatures = [];
 let currentPoste = null;
 let currentCand  = null;
 let editPosteId  = null;
+let db           = null;
+
+// ── FIREBASE IMPORTS
+import { initializeApp }                              from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getFirestore, collection, doc, addDoc,
+         updateDoc, deleteDoc, onSnapshot,
+         serverTimestamp, query, orderBy }            from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 // ── INIT
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  const app = initializeApp(FIREBASE_CONFIG);
+  db = getFirestore(app);
   applyConfig();
-  renderPostesPublic();
   bindNav();
   bindFilters();
   bindRHLogin();
@@ -33,10 +46,12 @@ document.addEventListener('DOMContentLoaded', () => {
   bindConfigForm();
   bindRHTabs();
   bindDetailModal();
+  listenPostes();
+  listenCandidatures();
 });
 
 /* ============================================================
-   PERSISTANCE
+   CONFIG LOCALE
    ============================================================ */
 function loadConfig() {
   try { return Object.assign({}, DEFAULT_CONFIG, JSON.parse(localStorage.getItem('rh_config') || '{}')); }
@@ -44,25 +59,30 @@ function loadConfig() {
 }
 function saveConfig() { localStorage.setItem('rh_config', JSON.stringify(config)); }
 
-function loadPostes() {
-  try { return JSON.parse(localStorage.getItem('rh_postes') || '[]'); }
-  catch { return []; }
-}
-function savePostes() { localStorage.setItem('rh_postes', JSON.stringify(postes)); }
-
-function loadCandidatures() {
-  try { return JSON.parse(localStorage.getItem('rh_candidatures') || '[]'); }
-  catch { return []; }
-}
-function saveCandidatures() { localStorage.setItem('rh_candidatures', JSON.stringify(candidatures)); }
-
-/* ============================================================
-   CONFIG
-   ============================================================ */
 function applyConfig() {
   const name = config.serverName || 'RECRUTEMENT';
   document.getElementById('site-name-nav').textContent = name;
   document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} — ${name}`;
+}
+
+/* ============================================================
+   FIRESTORE — LISTENERS TEMPS RÉEL
+   ============================================================ */
+function listenPostes() {
+  const q = query(collection(db, 'postes'), orderBy('createdAt', 'desc'));
+  onSnapshot(q, snap => {
+    postes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderPostesPublic(document.querySelector('.filter-btn.active')?.dataset.cat || 'all');
+    if (document.getElementById('rh-dashboard').style.display !== 'none') renderPostesRH();
+  });
+}
+
+function listenCandidatures() {
+  const q = query(collection(db, 'candidatures'), orderBy('createdAt', 'desc'));
+  onSnapshot(q, snap => {
+    candidatures = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (document.getElementById('rh-dashboard').style.display !== 'none') renderCandidaturesRH();
+  });
 }
 
 /* ============================================================
@@ -152,19 +172,19 @@ function bindFormCandidature() {
     btnSubmit.disabled = true;
 
     const cand = {
-      id: Date.now().toString(),
       posteId:  currentPoste.id,
       posteNom: currentPoste.nom,
       posteCat: currentPoste.cat,
-      prenom, nom, rp, email, motiv, cv, extra,
+      prenom, nom, rp, email, motiv,
+      cv:     cv || '',
+      extra:  extra || '',
       statut: 'en_attente',
-      date: new Date().toLocaleDateString('fr-FR'),
+      date:   new Date().toLocaleDateString('fr-FR'),
+      createdAt: serverTimestamp(),
     };
 
-    candidatures.push(cand);
-    saveCandidatures();
-
-    await sendMailRH(cand);
+    await addDoc(collection(db, 'candidatures'), cand);
+    await sendMailRH({ ...cand, id: 'new' });
     await sendMailAccuse(cand);
 
     btnText.style.display   = '';
@@ -185,8 +205,7 @@ function bindRHLogin() {
   });
   document.getElementById('form-rh-login').addEventListener('submit', e => {
     e.preventDefault();
-    const pwd = val('rh-password');
-    if (pwd === config.password) {
+    if (val('rh-password') === config.password) {
       hide('modal-rh-login');
       openDashboard();
     } else {
@@ -243,11 +262,10 @@ function renderCandidaturesRH() {
   const container = document.getElementById('candidatures-list');
   const empty     = document.getElementById('empty-cands');
   container.innerHTML = '';
-
   if (list.length === 0) { empty.style.display = ''; return; }
   empty.style.display = 'none';
 
-  [...list].reverse().forEach(c => {
+  list.forEach(c => {
     const card = document.createElement('div');
     card.className = 'cand-card';
     card.innerHTML = `
@@ -305,7 +323,7 @@ function renderPostesRH() {
 document.getElementById('btn-nouveau-poste').addEventListener('click', () => {
   editPosteId = null;
   document.getElementById('nouveau-poste-title').textContent = 'Nouveau poste';
-  document.getElementById('btn-submit-poste').textContent = 'Créer le poste';
+  document.getElementById('btn-submit-poste').textContent    = 'Créer le poste';
   document.getElementById('form-poste').reset();
   show('modal-nouveau-poste');
 });
@@ -318,7 +336,7 @@ document.getElementById('modal-nouveau-poste').addEventListener('click', e => {
 function openEditPoste(p) {
   editPosteId = p.id;
   document.getElementById('nouveau-poste-title').textContent = 'Modifier le poste';
-  document.getElementById('btn-submit-poste').textContent = 'Enregistrer';
+  document.getElementById('btn-submit-poste').textContent    = 'Enregistrer';
   document.getElementById('poste-nom').value    = p.nom;
   document.getElementById('poste-cat').value    = p.cat;
   document.getElementById('poste-desc').value   = p.desc;
@@ -327,7 +345,7 @@ function openEditPoste(p) {
 }
 
 function bindFormPoste() {
-  document.getElementById('form-poste').addEventListener('submit', e => {
+  document.getElementById('form-poste').addEventListener('submit', async e => {
     e.preventDefault();
     const nom    = val('poste-nom');
     const cat    = val('poste-cat');
@@ -336,25 +354,18 @@ function bindFormPoste() {
     if (!nom || !cat || !desc) return;
 
     if (editPosteId) {
-      const idx = postes.findIndex(p => p.id === editPosteId);
-      if (idx !== -1) postes[idx] = { ...postes[idx], nom, cat, desc, prereq };
+      await updateDoc(doc(db, 'postes', editPosteId), { nom, cat, desc, prereq });
     } else {
-      postes.push({ id: Date.now().toString(), nom, cat, desc, prereq });
+      await addDoc(collection(db, 'postes'), { nom, cat, desc, prereq, createdAt: serverTimestamp() });
     }
-    savePostes();
-    renderPostesRH();
-    renderPostesPublic();
     hide('modal-nouveau-poste');
     toast(editPosteId ? '✓ Poste modifié' : '✓ Poste créé', 'success');
   });
 }
 
-function deletePoste(id) {
+async function deletePoste(id) {
   if (!confirm('Supprimer ce poste ?')) return;
-  postes = postes.filter(p => p.id !== id);
-  savePostes();
-  renderPostesRH();
-  renderPostesPublic();
+  await deleteDoc(doc(db, 'postes', id));
   toast('Poste supprimé', 'success');
 }
 
@@ -370,22 +381,18 @@ function bindDetailModal() {
 
 function openCandDetail(c) {
   currentCand = c;
-  document.getElementById('detail-cat').textContent   = c.posteCat;
-  document.getElementById('detail-cat').className     = `modal-tag cat-badge cat-${c.posteCat}`;
-  document.getElementById('detail-poste').textContent = c.posteNom;
-  document.getElementById('detail-nom').textContent   = `${c.prenom} ${c.nom}`;
-  document.getElementById('detail-rp').textContent    = c.rp;
-  document.getElementById('detail-email').textContent = c.email;
+  document.getElementById('detail-cat').textContent        = c.posteCat;
+  document.getElementById('detail-cat').className          = `modal-tag cat-badge cat-${c.posteCat}`;
+  document.getElementById('detail-poste').textContent      = c.posteNom;
+  document.getElementById('detail-nom').textContent        = `${c.prenom} ${c.nom}`;
+  document.getElementById('detail-rp').textContent         = c.rp;
+  document.getElementById('detail-email').textContent      = c.email;
   document.getElementById('detail-motivation').textContent = c.motiv;
-  document.getElementById('detail-extra').textContent = c.extra || '—';
-
+  document.getElementById('detail-extra').textContent      = c.extra || '—';
   const cvEl = document.getElementById('detail-cv');
-  if (c.cv) {
-    cvEl.innerHTML = `<a href="${esc(c.cv)}" target="_blank" style="color:var(--yellow)">${esc(c.cv)}</a>`;
-  } else {
-    cvEl.textContent = '—';
-  }
-
+  cvEl.innerHTML = c.cv
+    ? `<a href="${esc(c.cv)}" target="_blank" style="color:var(--yellow)">${esc(c.cv)}</a>`
+    : '—';
   renderDetailActions(c);
   show('modal-cand-detail');
 }
@@ -393,26 +400,15 @@ function openCandDetail(c) {
 function renderDetailActions(c) {
   const container = document.getElementById('detail-actions');
   container.innerHTML = '';
-
   if (c.statut === 'en_attente') {
-    container.appendChild(makeActionBtn('Prendre en charge', 'charge', async () => {
-      await actionCand(c, 'en_charge');
-    }));
+    container.appendChild(makeActionBtn('Prendre en charge', 'charge', () => actionCand(c, 'en_charge')));
   }
   if (c.statut !== 'accepte' && c.statut !== 'refuse') {
-    container.appendChild(makeActionBtn('✓ Accepter', 'accept', async () => {
-      await actionCand(c, 'accepte');
-    }));
-    container.appendChild(makeActionBtn('✕ Refuser', 'refuse', async () => {
-      await actionCand(c, 'refuse');
-    }));
+    container.appendChild(makeActionBtn('✓ Accepter', 'accept', () => actionCand(c, 'accepte')));
+    container.appendChild(makeActionBtn('✕ Refuser',  'refuse', () => actionCand(c, 'refuse')));
   }
-  if (c.statut === 'accepte') {
-    container.innerHTML = `<span style="color:var(--green);font-weight:700;font-size:13px;letter-spacing:0.05em">✓ CANDIDATURE ACCEPTÉE</span>`;
-  }
-  if (c.statut === 'refuse') {
-    container.innerHTML = `<span style="color:var(--red);font-weight:700;font-size:13px;letter-spacing:0.05em">✕ CANDIDATURE REFUSÉE</span>`;
-  }
+  if (c.statut === 'accepte') container.innerHTML = `<span style="color:var(--green);font-weight:700;font-size:13px;letter-spacing:0.05em">✓ CANDIDATURE ACCEPTÉE</span>`;
+  if (c.statut === 'refuse')  container.innerHTML = `<span style="color:var(--red);font-weight:700;font-size:13px;letter-spacing:0.05em">✕ CANDIDATURE REFUSÉE</span>`;
 }
 
 function makeActionBtn(label, cls, handler) {
@@ -424,18 +420,12 @@ function makeActionBtn(label, cls, handler) {
 }
 
 async function actionCand(c, newStatut) {
-  const idx = candidatures.findIndex(x => x.id === c.id);
-  if (idx === -1) return;
-  candidatures[idx].statut = newStatut;
-  saveCandidatures();
-  currentCand = candidatures[idx];
-
-  if (newStatut === 'en_charge') await sendMailCharge(candidatures[idx]);
-  if (newStatut === 'accepte')   await sendMailAccept(candidatures[idx]);
-  if (newStatut === 'refuse')    await sendMailRefuse(candidatures[idx]);
-
-  renderDetailActions(candidatures[idx]);
-  renderCandidaturesRH();
+  await updateDoc(doc(db, 'candidatures', c.id), { statut: newStatut });
+  const updated = { ...c, statut: newStatut };
+  if (newStatut === 'en_charge') await sendMailCharge(updated);
+  if (newStatut === 'accepte')   await sendMailAccept(updated);
+  if (newStatut === 'refuse')    await sendMailRefuse(updated);
+  renderDetailActions(updated);
   toast(
     newStatut === 'en_charge' ? '📧 Email de prise en charge envoyé' :
     newStatut === 'accepte'   ? '✓ Candidature acceptée — email envoyé' :
@@ -469,79 +459,40 @@ function bindConfigForm() {
 
 /* ============================================================
    FORMSUBMIT — ENVOI MAILS
-   Envoie à n'importe quelle adresse, gratuit et illimité.
-   Premier envoi = email de confirmation à activer une fois.
    ============================================================ */
 async function fsSend(to, subject, body) {
-  if (!to) { console.warn('[Formsubmit] Adresse destinataire manquante.'); return; }
+  if (!to) return;
   try {
     const res = await fetch(FORMSUBMIT_URL(to), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({
-        subject,
-        message: body,
-        _subject: subject,
-        _captcha: 'false',
-        _template: 'box',
-        from_name: config.serverName || 'Recrutement',
-      }),
+      body: JSON.stringify({ subject, message: body, _subject: subject, _captcha: 'false', _template: 'box', from_name: config.serverName || 'Recrutement' }),
     });
     const data = await res.json();
-    if (data.success === 'true' || data.success === true) {
-      console.log(`[Formsubmit] ✅ Mail envoyé à ${to}`);
-    } else {
-      console.error('[Formsubmit] ❌ Erreur :', JSON.stringify(data));
-    }
-  } catch(err) {
-    console.error('[Formsubmit] ❌ Erreur réseau :', err);
-  }
+    console.log(data.success ? `[Mail] ✅ Envoyé à ${to}` : `[Mail] ❌ Erreur : ${data.message}`);
+  } catch(err) { console.error('[Mail] ❌ Erreur réseau :', err); }
 }
 
-// Mail aux RH : nouvelle candidature
 async function sendMailRH(c) {
-  if (!config.rhEmail) { console.warn('[Formsubmit] Email RH non configuré dans la config.'); return; }
-  await fsSend(
-    config.rhEmail,
-    `[${config.serverName}] Nouvelle candidature — ${c.posteNom}`,
-    `Nouvelle candidature reçue sur ${config.serverName}.\n\nPoste : ${c.posteNom} (${c.posteCat})\nCandidat : ${c.prenom} ${c.nom}\nPseudo RP : ${c.rp}\nEmail : ${c.email}\nDate : ${c.date}\n\n--- LETTRE DE MOTIVATION ---\n${c.motiv}\n\n--- CV ---\n${c.cv || 'Non fourni'}\n\n--- INFORMATIONS SUPPLÉMENTAIRES ---\n${c.extra || 'Aucune'}`
-  );
+  if (!config.rhEmail) return;
+  await fsSend(config.rhEmail, `[${config.serverName}] Nouvelle candidature — ${c.posteNom}`,
+    `Nouvelle candidature sur ${config.serverName}.\n\nPoste : ${c.posteNom} (${c.posteCat})\nCandidat : ${c.prenom} ${c.nom}\nRP : ${c.rp}\nEmail : ${c.email}\nDate : ${c.date}\n\nMOTIVATION :\n${c.motiv}\n\nCV : ${c.cv || 'Non fourni'}\n\nINFOS SUPP. :\n${c.extra || 'Aucune'}`);
 }
-
-// Accusé de réception au candidat
 async function sendMailAccuse(c) {
-  await fsSend(
-    c.email,
-    `[${config.serverName}] Candidature reçue — ${c.posteNom}`,
-    `Bonjour ${c.prenom},\n\nNous avons bien reçu ta candidature pour le poste : ${c.posteNom} sur ${config.serverName}.\n\nNotre équipe RH va l'examiner dans les plus brefs délais. Tu recevras une réponse par email.\n\nÀ bientôt,\nL'équipe RH de ${config.serverName}`
-  );
+  await fsSend(c.email, `[${config.serverName}] Candidature reçue — ${c.posteNom}`,
+    `Bonjour ${c.prenom},\n\nNous avons bien reçu ta candidature pour le poste : ${c.posteNom} sur ${config.serverName}.\n\nNotre équipe RH va l'examiner dans les plus brefs délais.\n\nÀ bientôt,\nL'équipe RH de ${config.serverName}`);
 }
-
-// Prise en charge
 async function sendMailCharge(c) {
-  await fsSend(
-    c.email,
-    `[${config.serverName}] Ta candidature est prise en charge`,
-    `Bonjour ${c.prenom},\n\nTa candidature pour le poste ${c.posteNom} sur ${config.serverName} va être prise en charge dans les plus brefs délais.\n\nNous reviendrons vers toi très prochainement.\n\nL'équipe RH de ${config.serverName}`
-  );
+  await fsSend(c.email, `[${config.serverName}] Ta candidature est prise en charge`,
+    `Bonjour ${c.prenom},\n\nTa candidature pour le poste ${c.posteNom} sur ${config.serverName} va être prise en charge dans les plus brefs délais.\n\nNous reviendrons vers toi très prochainement.\n\nL'équipe RH de ${config.serverName}`);
 }
-
-// Accepté
 async function sendMailAccept(c) {
-  await fsSend(
-    c.email,
-    `[${config.serverName}] Candidature acceptée !`,
-    `Bonjour ${c.prenom},\n\nFélicitations ! Ta candidature pour le poste ${c.posteNom} sur ${config.serverName} a été acceptée.\n\nBienvenue dans l'équipe ! Un membre va te contacter prochainement pour la suite.\n\nL'équipe RH de ${config.serverName}`
-  );
+  await fsSend(c.email, `[${config.serverName}] Candidature acceptée !`,
+    `Bonjour ${c.prenom},\n\nFélicitations ! Ta candidature pour le poste ${c.posteNom} sur ${config.serverName} a été acceptée.\n\nBienvenue dans l'équipe ! Un membre va te contacter prochainement.\n\nL'équipe RH de ${config.serverName}`);
 }
-
-// Refusé
 async function sendMailRefuse(c) {
-  await fsSend(
-    c.email,
-    `[${config.serverName}] Résultat de ta candidature`,
-    `Bonjour ${c.prenom},\n\nAprès examen de ta candidature pour le poste ${c.posteNom} sur ${config.serverName}, nous ne sommes malheureusement pas en mesure de donner suite pour le moment.\n\nNous te souhaitons bonne chance et te remercions de l'intérêt porté à notre équipe.\n\nL'équipe RH de ${config.serverName}`
-  );
+  await fsSend(c.email, `[${config.serverName}] Résultat de ta candidature`,
+    `Bonjour ${c.prenom},\n\nAprès examen de ta candidature pour le poste ${c.posteNom} sur ${config.serverName}, nous ne sommes malheureusement pas en mesure de donner suite.\n\nMerci de l'intérêt porté à notre équipe.\n\nL'équipe RH de ${config.serverName}`);
 }
 
 /* ============================================================
@@ -563,7 +514,6 @@ function showFormError(id, msg) {
 function statusLabel(s) {
   return { en_attente: 'En attente', en_charge: 'Pris en charge', accepte: 'Accepté', refuse: 'Refusé' }[s] || s;
 }
-
 let toastTimer = null;
 function toast(msg, type = 'success') {
   const el = document.getElementById('toast');
