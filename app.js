@@ -1,23 +1,22 @@
 /* ============================================================
    APP.JS — Firebase Firestore compat (CDN, pas de bundler)
    ============================================================ */
- 
-// ─── FIREBASE CONFIG — remplace par les tiennes ───────────────
+
+// ─── FIREBASE CONFIG ───────────────────────────────────────────
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyA04uU6I2b4PDvjwHyeUuQvKrs5Jo3_56Y",
-  authDomain: "site-11-58f78.firebaseapp.com",
-  projectId: "site-11-58f78",
-  storageBucket: "site-11-58f78.firebasestorage.app",
+  apiKey:            "AIzaSyA04uU6I2b4PDvjwHyeUuQvKrs5Jo3_56Y",
+  authDomain:        "site-11-58f78.firebaseapp.com",
+  projectId:         "site-11-58f78",
+  storageBucket:     "site-11-58f78.firebasestorage.app",
   messagingSenderId: "1010449432094",
-  appId: "1:1010449432094:web:b17a0ad2e790681c62f80f",
-  measurementId: "G-G0VRKZR80L"
+  appId:             "1:1010449432094:web:b17a0ad2e790681c62f80f",
 };
 // ──────────────────────────────────────────────────────────────
- 
+
 const FORMSUBMIT_URL = (email) => `https://formsubmit.co/ajax/${encodeURIComponent(email)}`;
- 
+
 const DEFAULT_CONFIG = { rhEmail: '', serverName: 'MON SERVEUR', password: 'rh2025' };
- 
+
 let config       = loadConfig();
 let postes       = [];
 let candidatures = [];
@@ -25,12 +24,12 @@ let currentPoste = null;
 let currentCand  = null;
 let editPosteId  = null;
 let db           = null;
- 
+
 /* ── INIT ── */
 window.addEventListener('load', () => {
   firebase.initializeApp(FIREBASE_CONFIG);
   db = firebase.firestore();
- 
+
   applyConfig();
   bindNav();
   bindFilters();
@@ -43,7 +42,7 @@ window.addEventListener('load', () => {
   listenPostes();
   listenCandidatures();
 });
- 
+
 /* ============================================================
    CONFIG LOCALE (localStorage)
    ============================================================ */
@@ -52,13 +51,13 @@ function loadConfig() {
   catch { return { ...DEFAULT_CONFIG }; }
 }
 function saveConfig() { localStorage.setItem('rh_config', JSON.stringify(config)); }
- 
+
 function applyConfig() {
   const name = config.serverName || 'RECRUTEMENT';
   document.getElementById('site-name-nav').textContent = name;
   document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} — ${name}`;
 }
- 
+
 /* ============================================================
    FIRESTORE — ÉCOUTE EN TEMPS RÉEL
    ============================================================ */
@@ -70,7 +69,7 @@ function listenPostes() {
     if (document.getElementById('rh-dashboard').style.display !== 'none') renderPostesRH();
   });
 }
- 
+
 function listenCandidatures() {
   db.collection('candidatures').orderBy('createdAt', 'desc').onSnapshot(snap => {
     candidatures = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -82,7 +81,7 @@ function listenCandidatures() {
     }
   });
 }
- 
+
 /* ============================================================
    POSTES PUBLICS
    ============================================================ */
@@ -109,7 +108,7 @@ function renderPostesPublic(filterCat = 'all') {
     grid.appendChild(card);
   });
 }
- 
+
 function bindFilters() {
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -119,11 +118,11 @@ function bindFilters() {
     });
   });
 }
- 
+
 function bindNav() {
   document.getElementById('btn-open-rh-login').addEventListener('click', () => show('modal-rh-login'));
 }
- 
+
 /* ============================================================
    POSTULER
    ============================================================ */
@@ -134,19 +133,19 @@ function openPostuler(poste) {
   document.getElementById('form-error').style.display = 'none';
   show('modal-postuler');
 }
- 
+
 document.getElementById('close-postuler').addEventListener('click', () => hide('modal-postuler'));
 document.getElementById('modal-postuler').addEventListener('click', e => {
   if (e.target === e.currentTarget) hide('modal-postuler');
 });
- 
+
 function bindFormCandidature() {
   document.getElementById('form-candidature').addEventListener('submit', async e => {
     e.preventDefault();
     const prenom = val('f-prenom'), nom = val('f-nom'), rp = val('f-rp'),
           email  = val('f-email'), motiv = val('f-motivation'),
           cv     = val('f-cv'),   extra = val('f-extra');
- 
+
     if (!prenom || !nom || !rp || !email || !motiv) {
       showFormError('form-error', 'Merci de remplir tous les champs obligatoires.');
       return;
@@ -155,9 +154,9 @@ function bindFormCandidature() {
       showFormError('form-error', 'Adresse email invalide.');
       return;
     }
- 
+
     setBtnLoading(true);
- 
+
     const cand = {
       posteId:  currentPoste.id,
       posteNom: currentPoste.nom,
@@ -168,23 +167,23 @@ function bindFormCandidature() {
       date: new Date().toLocaleDateString('fr-FR'),
       createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
- 
+
     await db.collection('candidatures').add(cand);
     await sendMailRH(cand);
     await sendMailAccuse(cand);
- 
+
     setBtnLoading(false);
     hide('modal-postuler');
     toast('✓ Candidature envoyée avec succès !', 'success');
   });
 }
- 
+
 function setBtnLoading(loading) {
   document.getElementById('btn-submit-text').style.display   = loading ? 'none' : '';
   document.getElementById('btn-submit-loader').style.display = loading ? '' : 'none';
   document.getElementById('btn-submit-cand').disabled = loading;
 }
- 
+
 /* ============================================================
    RH LOGIN
    ============================================================ */
@@ -203,7 +202,7 @@ function bindRHLogin() {
     }
   });
 }
- 
+
 /* ============================================================
    DASHBOARD RH
    ============================================================ */
@@ -217,7 +216,7 @@ function openDashboard() {
   renderPostesRH();
   fillConfigForm();
 }
- 
+
 function closeDashboard() {
   document.getElementById('navbar').style.display  = '';
   document.getElementById('hero').style.display    = '';
@@ -225,9 +224,9 @@ function closeDashboard() {
   document.querySelector('footer').style.display   = '';
   document.getElementById('rh-dashboard').style.display = 'none';
 }
- 
+
 document.getElementById('btn-logout').addEventListener('click', closeDashboard);
- 
+
 function bindRHTabs() {
   document.querySelectorAll('.rh-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -238,7 +237,7 @@ function bindRHTabs() {
     });
   });
 }
- 
+
 /* ── CANDIDATURES ── */
 function renderCandidaturesRH() {
   const statusFilter = document.getElementById('filter-status').value;
@@ -248,13 +247,13 @@ function renderCandidaturesRH() {
     if (catFilter    !== 'all' && c.posteCat !== catFilter)  return false;
     return true;
   });
- 
+
   const container = document.getElementById('candidatures-list');
   const empty     = document.getElementById('empty-cands');
   container.innerHTML = '';
   if (list.length === 0) { empty.style.display = ''; return; }
   empty.style.display = 'none';
- 
+
   list.forEach(c => {
     const card = document.createElement('div');
     card.className = 'cand-card';
@@ -277,10 +276,10 @@ function renderCandidaturesRH() {
     container.appendChild(card);
   });
 }
- 
+
 document.getElementById('filter-status').addEventListener('change', renderCandidaturesRH);
 document.getElementById('filter-cat-cand').addEventListener('change', renderCandidaturesRH);
- 
+
 /* ── POSTES RH ── */
 function renderPostesRH() {
   const container = document.getElementById('postes-rh-list');
@@ -308,7 +307,7 @@ function renderPostesRH() {
     container.appendChild(row);
   });
 }
- 
+
 document.getElementById('btn-nouveau-poste').addEventListener('click', () => {
   editPosteId = null;
   document.getElementById('nouveau-poste-title').textContent = 'Nouveau poste';
@@ -316,12 +315,12 @@ document.getElementById('btn-nouveau-poste').addEventListener('click', () => {
   document.getElementById('form-poste').reset();
   show('modal-nouveau-poste');
 });
- 
+
 document.getElementById('close-nouveau-poste').addEventListener('click', () => hide('modal-nouveau-poste'));
 document.getElementById('modal-nouveau-poste').addEventListener('click', e => {
   if (e.target === e.currentTarget) hide('modal-nouveau-poste');
 });
- 
+
 function openEditPoste(p) {
   editPosteId = p.id;
   document.getElementById('nouveau-poste-title').textContent = 'Modifier le poste';
@@ -332,7 +331,7 @@ function openEditPoste(p) {
   document.getElementById('poste-prereq').value = p.prereq || '';
   show('modal-nouveau-poste');
 }
- 
+
 function bindFormPoste() {
   document.getElementById('form-poste').addEventListener('submit', async e => {
     e.preventDefault();
@@ -341,7 +340,7 @@ function bindFormPoste() {
     const desc   = val('poste-desc');
     const prereq = val('poste-prereq');
     if (!nom || !cat || !desc) return;
- 
+
     if (editPosteId) {
       await db.collection('postes').doc(editPosteId).update({ nom, cat, desc, prereq });
     } else {
@@ -354,13 +353,13 @@ function bindFormPoste() {
     toast(editPosteId ? '✓ Poste modifié' : '✓ Poste créé', 'success');
   });
 }
- 
+
 async function deletePoste(id) {
   if (!confirm('Supprimer ce poste ?')) return;
   await db.collection('postes').doc(id).delete();
   toast('Poste supprimé', 'success');
 }
- 
+
 /* ============================================================
    DETAIL CANDIDATURE
    ============================================================ */
@@ -370,7 +369,7 @@ function bindDetailModal() {
     if (e.target === e.currentTarget) hide('modal-cand-detail');
   });
 }
- 
+
 function openCandDetail(c) {
   currentCand = c;
   document.getElementById('detail-cat').textContent        = c.posteCat;
@@ -388,7 +387,7 @@ function openCandDetail(c) {
   renderDetailActions(c);
   show('modal-cand-detail');
 }
- 
+
 function renderDetailActions(c) {
   const container = document.getElementById('detail-actions');
   container.innerHTML = '';
@@ -406,7 +405,7 @@ function renderDetailActions(c) {
   container.appendChild(makeActionBtn('✓ Accepter', 'accept', () => actionCand(c, 'accepte')));
   container.appendChild(makeActionBtn('✕ Refuser',  'refuse', () => actionCand(c, 'refuse')));
 }
- 
+
 function makeActionBtn(label, cls, handler) {
   const btn = document.createElement('button');
   btn.className = `btn-action ${cls}`;
@@ -414,7 +413,7 @@ function makeActionBtn(label, cls, handler) {
   btn.addEventListener('click', handler);
   return btn;
 }
- 
+
 async function actionCand(c, newStatut) {
   await db.collection('candidatures').doc(c.id).update({ statut: newStatut });
   const updated = { ...c, statut: newStatut };
@@ -430,7 +429,7 @@ async function actionCand(c, newStatut) {
     newStatut === 'refuse' ? 'error' : 'success'
   );
 }
- 
+
 /* ============================================================
    CONFIG
    ============================================================ */
@@ -439,7 +438,7 @@ function fillConfigForm() {
   document.getElementById('cfg-server-name').value = config.serverName || '';
   document.getElementById('cfg-password').value    = '';
 }
- 
+
 function bindConfigForm() {
   document.getElementById('btn-save-config').addEventListener('click', () => {
     config.rhEmail    = val('cfg-rh-email');
@@ -453,7 +452,7 @@ function bindConfigForm() {
     setTimeout(() => ok.style.display = 'none', 3000);
   });
 }
- 
+
 /* ============================================================
    FORMSUBMIT — MAILS (tes textes conservés)
    ============================================================ */
@@ -473,7 +472,7 @@ async function fsSend(to, subject, body) {
     console.log(data.success ? `[Mail] ✅ Envoyé à ${to}` : `[Mail] ❌ ${data.message}`);
   } catch(err) { console.error('[Mail] ❌ Réseau :', err); }
 }
- 
+
 async function sendMailRH(c) {
   if (!config.rhEmail) return;
   await fsSend(config.rhEmail,
@@ -481,35 +480,35 @@ async function sendMailRH(c) {
     `Nouvelle candidature sur ${config.serverName}.\n\nPoste : ${c.posteNom} (${c.posteCat})\nCandidat : ${c.prenom} ${c.nom}\nRP : ${c.rp}\nEmail : ${c.email}\nDate : ${c.date}\n\nMOTIVATION :\n${c.motiv}\n\nCV : ${c.cv || 'Non fourni'}\n\nINFOS SUPP. :\n${c.extra || 'Aucune'}`
   );
 }
- 
+
 async function sendMailAccuse(c) {
   await fsSend(c.email,
     `[${config.serverName}] Candidature reçue — ${c.posteNom}`,
     `Bonjour ${c.prenom},\n\nNous avons bien reçu votre candidature et nous vous remercions de la confiance que vous nous témoignez.\n\nVotre dossier a été transmis à la personne en charge de ce recrutement, qui reviendra vers vous si votre candidature correspond à la recherche en cours. Si vous n'êtes pas contacté prochainement, veuillez considérer que votre profil ne correspond pas à la recherche en cours.\n\nNéanmoins, votre profil est susceptible de nous intéresser pour d'autres postes que nous aurions à pourvoir.\n\nAussi, sauf avis contraire de votre part, nous vous proposons de conserver votre dossier afin de pouvoir vous recontacter en fonction de futures opportunités.\n\nLe service des Ressources Humaines`
   );
 }
- 
+
 async function sendMailCharge(c) {
   await fsSend(c.email,
     `[${config.serverName}] Ta candidature est prise en charge`,
     `Bonjour ${c.prenom},\n\nVotre candidature pour le poste ${c.posteNom} sur ${config.serverName} — Nous accusons réception de votre candidature et nous vous remercions de l'intérêt que vous portez à la société. Votre dossier sera traité dans les plus brefs délais.\n\nCependant si aucune réponse ne vous a été formulée dans un délai de deux mois suivant votre candidature, considérez que votre dossier n'est pas retenu.\n\nNous vous prions d'agréer, nos salutations les meilleures.\n\nLe service des Ressources Humaines`
   );
 }
- 
+
 async function sendMailAccept(c) {
   await fsSend(c.email,
     `[${config.serverName}] Candidature acceptée !`,
     `Bonjour ${c.prenom},\n\nVotre candidature pour le poste ${c.posteNom} sur ${config.serverName} a été acceptée.\n\nBienvenue dans l'équipe ! Nous allons vous recontacter prochainement.\n\nLe service des Ressources Humaines`
   );
 }
- 
+
 async function sendMailRefuse(c) {
   await fsSend(c.email,
     `[${config.serverName}] Résultat de ta candidature`,
     `Bonjour ${c.prenom},\n\nMalgré tout l'intérêt de votre candidature pour le poste ${c.posteNom} sur ${config.serverName}, nous sommes dans le regret de ne pas pouvoir donner suite à votre demande. Nous vous souhaitons de trouver satisfaction dans votre recherche.\n\nLe service des Ressources Humaines`
   );
 }
- 
+
 /* ============================================================
    UTILITAIRES
    ============================================================ */
