@@ -6,7 +6,6 @@
   <title>Recrutement</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -181,38 +180,10 @@
   <!-- Tab: Config -->
   <div class="rh-content" id="tab-config" style="display:none">
     <div class="config-card">
-      <h2>Configuration EmailJS</h2>
-      <p class="config-info">Ces paramètres sont sauvegardés localement dans le navigateur. Tu peux les modifier à tout moment.</p>
+      <h2>Configuration</h2>
+      <p class="config-info">Les mails sont envoyés automatiquement via Web3Forms. Il suffit de renseigner ton adresse email RH pour recevoir les candidatures.</p>
       <div class="field">
-        <label>Public Key (User ID)</label>
-        <input type="text" id="cfg-public-key" placeholder="ex: AbCdEfGhIjKlMnOp" />
-      </div>
-      <div class="field">
-        <label>Service ID</label>
-        <input type="text" id="cfg-service-id" placeholder="ex: service_xxxxxxx" />
-      </div>
-      <div class="field">
-        <label>Template ID — Mail RH (nouvelle candidature)</label>
-        <input type="text" id="cfg-tpl-rh" placeholder="ex: template_xxxxxxx" />
-      </div>
-      <div class="field">
-        <label>Template ID — Accusé de réception (candidat)</label>
-        <input type="text" id="cfg-tpl-accuse" placeholder="ex: template_xxxxxxx" />
-      </div>
-      <div class="field">
-        <label>Template ID — Prise en charge</label>
-        <input type="text" id="cfg-tpl-charge" placeholder="ex: template_xxxxxxx" />
-      </div>
-      <div class="field">
-        <label>Template ID — Accepté</label>
-        <input type="text" id="cfg-tpl-accept" placeholder="ex: template_xxxxxxx" />
-      </div>
-      <div class="field">
-        <label>Template ID — Refusé</label>
-        <input type="text" id="cfg-tpl-refuse" placeholder="ex: template_xxxxxxx" />
-      </div>
-      <div class="field">
-        <label>Email RH (destinataire des candidatures)</label>
+        <label>Email RH (reçoit les nouvelles candidatures)</label>
         <input type="email" id="cfg-rh-email" placeholder="rh@tonserveur.com" />
       </div>
       <div class="field">
@@ -220,11 +191,11 @@
         <input type="text" id="cfg-server-name" placeholder="Mon Serveur" />
       </div>
       <div class="field">
-        <label>Mot de passe RH</label>
-        <input type="password" id="cfg-password" placeholder="Nouveau mot de passe" />
-        <small>Laisse vide pour ne pas changer</small>
+        <label>Nouveau mot de passe RH</label>
+        <input type="password" id="cfg-password" placeholder="Laisse vide pour ne pas changer" />
+        <small>Laisse vide pour conserver l'actuel</small>
       </div>
-      <button class="btn-primary" id="btn-save-config">Sauvegarder la configuration</button>
+      <button class="btn-primary" id="btn-save-config">Sauvegarder</button>
       <div class="config-success" id="config-success" style="display:none">✓ Configuration sauvegardée</div>
     </div>
   </div>
