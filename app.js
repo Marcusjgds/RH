@@ -4,12 +4,14 @@
  
 // ─── FIREBASE CONFIG — remplace par les tiennes ───────────────
 const FIREBASE_CONFIG = {
-  apiKey:            "REMPLACE_API_KEY",
-  authDomain:        "REMPLACE.firebaseapp.com",
-  projectId:         "REMPLACE_PROJECT_ID",
-  storageBucket:     "REMPLACE.appspot.com",
-  messagingSenderId: "REMPLACE_SENDER_ID",
-  appId:             "REMPLACE_APP_ID",
+  apiKey: "AIzaSyA04uU6I2b4PDvjwHyeUuQvKrs5Jo3_56Y",
+  authDomain: "site-11-58f78.firebaseapp.com",
+  projectId: "REMPLACE_PROJECT_ID",
+  projectId: "site-11-58f78",
+  storageBucket: "site-11-58f78.firebasestorage.app",
+  messagingSenderId: "1010449432094",
+  appId: "1:1010449432094:web:b17a0ad2e790681c62f80f",
+  measurementId: "G-G0VRKZR80L"
 };
 // ──────────────────────────────────────────────────────────────
  
