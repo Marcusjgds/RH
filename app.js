@@ -1,24 +1,22 @@
 /* ============================================================
-   APP.JS — Site de recrutement — Firebase Firestore (temps réel)
+   APP.JS — Firebase Firestore compat (CDN, pas de bundler)
    ============================================================ */
  
-// ── FIREBASE CONFIG (à remplir avec tes infos Firebase)
+// ─── FIREBASE CONFIG — remplace par les tiennes ───────────────
 const FIREBASE_CONFIG = {
-  apiKey:            "REMPLACE_PAR_TON_API_KEY",
-  authDomain:        "REMPLACE_PAR_TON_AUTH_DOMAIN",
-  projectId:         "REMPLACE_PAR_TON_PROJECT_ID",
-  storageBucket:     "REMPLACE_PAR_TON_STORAGE_BUCKET",
-  messagingSenderId: "REMPLACE_PAR_TON_SENDER_ID",
-  appId:             "REMPLACE_PAR_TON_APP_ID",
+  apiKey:            "REMPLACE_API_KEY",
+  authDomain:        "REMPLACE.firebaseapp.com",
+  projectId:         "REMPLACE_PROJECT_ID",
+  storageBucket:     "REMPLACE.appspot.com",
+  messagingSenderId: "REMPLACE_SENDER_ID",
+  appId:             "REMPLACE_APP_ID",
 };
+// ──────────────────────────────────────────────────────────────
  
-// ── FORMSUBMIT
 const FORMSUBMIT_URL = (email) => `https://formsubmit.co/ajax/${encodeURIComponent(email)}`;
  
-// ── CONFIG LOCALE (mot de passe, nom serveur, email RH — reste en localStorage)
 const DEFAULT_CONFIG = { rhEmail: '', serverName: 'MON SERVEUR', password: 'rh2025' };
  
-// ── STATE
 let config       = loadConfig();
 let postes       = [];
 let candidatures = [];
@@ -27,16 +25,11 @@ let currentCand  = null;
 let editPosteId  = null;
 let db           = null;
  
-// ── FIREBASE IMPORTS
-import { initializeApp }                              from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getFirestore, collection, doc, addDoc,
-         updateDoc, deleteDoc, onSnapshot,
-         serverTimestamp, query, orderBy }            from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+/* ── INIT ── */
+window.addEventListener('load', () => {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
  
-// ── INIT
-document.addEventListener('DOMContentLoaded', async () => {
-  const app = initializeApp(FIREBASE_CONFIG);
-  db = getFirestore(app);
   applyConfig();
   bindNav();
   bindFilters();
@@ -51,7 +44,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
  
 /* ============================================================
-   CONFIG LOCALE
+   CONFIG LOCALE (localStorage)
    ============================================================ */
 function loadConfig() {
   try { return Object.assign({}, DEFAULT_CONFIG, JSON.parse(localStorage.getItem('rh_config') || '{}')); }
@@ -66,27 +59,31 @@ function applyConfig() {
 }
  
 /* ============================================================
-   FIRESTORE — LISTENERS TEMPS RÉEL
+   FIRESTORE — ÉCOUTE EN TEMPS RÉEL
    ============================================================ */
 function listenPostes() {
-  const q = query(collection(db, 'postes'), orderBy('createdAt', 'desc'));
-  onSnapshot(q, snap => {
+  db.collection('postes').orderBy('createdAt', 'desc').onSnapshot(snap => {
     postes = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderPostesPublic(document.querySelector('.filter-btn.active')?.dataset.cat || 'all');
+    const activeCat = document.querySelector('.filter-btn.active')?.dataset.cat || 'all';
+    renderPostesPublic(activeCat);
     if (document.getElementById('rh-dashboard').style.display !== 'none') renderPostesRH();
   });
 }
  
 function listenCandidatures() {
-  const q = query(collection(db, 'candidatures'), orderBy('createdAt', 'desc'));
-  onSnapshot(q, snap => {
+  db.collection('candidatures').orderBy('createdAt', 'desc').onSnapshot(snap => {
     candidatures = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     if (document.getElementById('rh-dashboard').style.display !== 'none') renderCandidaturesRH();
+    // Met à jour la modal de détail si ouverte
+    if (currentCand && document.getElementById('modal-cand-detail').style.display !== 'none') {
+      const updated = candidatures.find(c => c.id === currentCand.id);
+      if (updated) { currentCand = updated; renderDetailActions(updated); }
+    }
   });
 }
  
 /* ============================================================
-   RENDU POSTES PUBLICS
+   POSTES PUBLICS
    ============================================================ */
 function renderPostesPublic(filterCat = 'all') {
   const grid  = document.getElementById('postes-grid');
@@ -105,16 +102,13 @@ function renderPostesPublic(filterCat = 'all') {
       </div>
       <p class="poste-desc">${esc(p.desc)}</p>
       ${p.prereq ? `<p class="poste-prereq"><strong>Prérequis :</strong> ${esc(p.prereq)}</p>` : ''}
-      <button class="btn-postuler" data-id="${p.id}">Postuler →</button>
+      <button class="btn-postuler">Postuler →</button>
     `;
     card.querySelector('.btn-postuler').addEventListener('click', () => openPostuler(p));
     grid.appendChild(card);
   });
 }
  
-/* ============================================================
-   FILTERS
-   ============================================================ */
 function bindFilters() {
   document.querySelectorAll('.filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -125,15 +119,12 @@ function bindFilters() {
   });
 }
  
-/* ============================================================
-   NAV
-   ============================================================ */
 function bindNav() {
   document.getElementById('btn-open-rh-login').addEventListener('click', () => show('modal-rh-login'));
 }
  
 /* ============================================================
-   MODAL POSTULER
+   POSTULER
    ============================================================ */
 function openPostuler(poste) {
   currentPoste = poste;
@@ -164,35 +155,33 @@ function bindFormCandidature() {
       return;
     }
  
-    const btnText   = document.getElementById('btn-submit-text');
-    const btnLoader = document.getElementById('btn-submit-loader');
-    const btnSubmit = document.getElementById('btn-submit-cand');
-    btnText.style.display   = 'none';
-    btnLoader.style.display = '';
-    btnSubmit.disabled = true;
+    setBtnLoading(true);
  
     const cand = {
       posteId:  currentPoste.id,
       posteNom: currentPoste.nom,
       posteCat: currentPoste.cat,
       prenom, nom, rp, email, motiv,
-      cv:     cv || '',
-      extra:  extra || '',
+      cv: cv || '', extra: extra || '',
       statut: 'en_attente',
-      date:   new Date().toLocaleDateString('fr-FR'),
-      createdAt: serverTimestamp(),
+      date: new Date().toLocaleDateString('fr-FR'),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     };
  
-    await addDoc(collection(db, 'candidatures'), cand);
-    await sendMailRH({ ...cand, id: 'new' });
+    await db.collection('candidatures').add(cand);
+    await sendMailRH(cand);
     await sendMailAccuse(cand);
  
-    btnText.style.display   = '';
-    btnLoader.style.display = 'none';
-    btnSubmit.disabled = false;
+    setBtnLoading(false);
     hide('modal-postuler');
     toast('✓ Candidature envoyée avec succès !', 'success');
   });
+}
+ 
+function setBtnLoading(loading) {
+  document.getElementById('btn-submit-text').style.display   = loading ? 'none' : '';
+  document.getElementById('btn-submit-loader').style.display = loading ? '' : 'none';
+  document.getElementById('btn-submit-cand').disabled = loading;
 }
  
 /* ============================================================
@@ -236,7 +225,7 @@ function closeDashboard() {
   document.getElementById('rh-dashboard').style.display = 'none';
 }
  
-document.getElementById('btn-logout').addEventListener('click', () => closeDashboard());
+document.getElementById('btn-logout').addEventListener('click', closeDashboard);
  
 function bindRHTabs() {
   document.querySelectorAll('.rh-tab').forEach(tab => {
@@ -249,7 +238,7 @@ function bindRHTabs() {
   });
 }
  
-/* ── CANDIDATURES RH ── */
+/* ── CANDIDATURES ── */
 function renderCandidaturesRH() {
   const statusFilter = document.getElementById('filter-status').value;
   const catFilter    = document.getElementById('filter-cat-cand').value;
@@ -319,7 +308,6 @@ function renderPostesRH() {
   });
 }
  
-/* ── NOUVEAU / MODIFIER POSTE ── */
 document.getElementById('btn-nouveau-poste').addEventListener('click', () => {
   editPosteId = null;
   document.getElementById('nouveau-poste-title').textContent = 'Nouveau poste';
@@ -354,9 +342,12 @@ function bindFormPoste() {
     if (!nom || !cat || !desc) return;
  
     if (editPosteId) {
-      await updateDoc(doc(db, 'postes', editPosteId), { nom, cat, desc, prereq });
+      await db.collection('postes').doc(editPosteId).update({ nom, cat, desc, prereq });
     } else {
-      await addDoc(collection(db, 'postes'), { nom, cat, desc, prereq, createdAt: serverTimestamp() });
+      await db.collection('postes').add({
+        nom, cat, desc, prereq,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      });
     }
     hide('modal-nouveau-poste');
     toast(editPosteId ? '✓ Poste modifié' : '✓ Poste créé', 'success');
@@ -365,7 +356,7 @@ function bindFormPoste() {
  
 async function deletePoste(id) {
   if (!confirm('Supprimer ce poste ?')) return;
-  await deleteDoc(doc(db, 'postes', id));
+  await db.collection('postes').doc(id).delete();
   toast('Poste supprimé', 'success');
 }
  
@@ -400,15 +391,19 @@ function openCandDetail(c) {
 function renderDetailActions(c) {
   const container = document.getElementById('detail-actions');
   container.innerHTML = '';
+  if (c.statut === 'accepte') {
+    container.innerHTML = `<span style="color:var(--green);font-weight:700;font-size:13px;letter-spacing:0.05em">✓ CANDIDATURE ACCEPTÉE</span>`;
+    return;
+  }
+  if (c.statut === 'refuse') {
+    container.innerHTML = `<span style="color:var(--red);font-weight:700;font-size:13px;letter-spacing:0.05em">✕ CANDIDATURE REFUSÉE</span>`;
+    return;
+  }
   if (c.statut === 'en_attente') {
     container.appendChild(makeActionBtn('Prendre en charge', 'charge', () => actionCand(c, 'en_charge')));
   }
-  if (c.statut !== 'accepte' && c.statut !== 'refuse') {
-    container.appendChild(makeActionBtn('✓ Accepter', 'accept', () => actionCand(c, 'accepte')));
-    container.appendChild(makeActionBtn('✕ Refuser',  'refuse', () => actionCand(c, 'refuse')));
-  }
-  if (c.statut === 'accepte') container.innerHTML = `<span style="color:var(--green);font-weight:700;font-size:13px;letter-spacing:0.05em">✓ CANDIDATURE ACCEPTÉE</span>`;
-  if (c.statut === 'refuse')  container.innerHTML = `<span style="color:var(--red);font-weight:700;font-size:13px;letter-spacing:0.05em">✕ CANDIDATURE REFUSÉE</span>`;
+  container.appendChild(makeActionBtn('✓ Accepter', 'accept', () => actionCand(c, 'accepte')));
+  container.appendChild(makeActionBtn('✕ Refuser',  'refuse', () => actionCand(c, 'refuse')));
 }
  
 function makeActionBtn(label, cls, handler) {
@@ -420,8 +415,9 @@ function makeActionBtn(label, cls, handler) {
 }
  
 async function actionCand(c, newStatut) {
-  await updateDoc(doc(db, 'candidatures', c.id), { statut: newStatut });
+  await db.collection('candidatures').doc(c.id).update({ statut: newStatut });
   const updated = { ...c, statut: newStatut };
+  currentCand = updated;
   if (newStatut === 'en_charge') await sendMailCharge(updated);
   if (newStatut === 'accepte')   await sendMailAccept(updated);
   if (newStatut === 'refuse')    await sendMailRefuse(updated);
@@ -435,7 +431,7 @@ async function actionCand(c, newStatut) {
 }
  
 /* ============================================================
-   CONFIG FORM
+   CONFIG
    ============================================================ */
 function fillConfigForm() {
   document.getElementById('cfg-rh-email').value    = config.rhEmail    || '';
@@ -458,7 +454,7 @@ function bindConfigForm() {
 }
  
 /* ============================================================
-   FORMSUBMIT — ENVOI MAILS
+   FORMSUBMIT — MAILS (tes textes conservés)
    ============================================================ */
 async function fsSend(to, subject, body) {
   if (!to) return;
@@ -466,39 +462,53 @@ async function fsSend(to, subject, body) {
     const res = await fetch(FORMSUBMIT_URL(to), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ subject, message: body, _subject: subject, _captcha: 'false', _template: 'box', from_name: config.serverName || 'Recrutement' }),
+      body: JSON.stringify({
+        subject, message: body,
+        _subject: subject, _captcha: 'false', _template: 'box',
+        from_name: config.serverName || 'Recrutement',
+      }),
     });
     const data = await res.json();
-    console.log(data.success ? `[Mail] ✅ Envoyé à ${to}` : `[Mail] ❌ Erreur : ${data.message}`);
-  } catch(err) { console.error('[Mail] ❌ Erreur réseau :', err); }
+    console.log(data.success ? `[Mail] ✅ Envoyé à ${to}` : `[Mail] ❌ ${data.message}`);
+  } catch(err) { console.error('[Mail] ❌ Réseau :', err); }
 }
  
 async function sendMailRH(c) {
   if (!config.rhEmail) return;
-  await fsSend(config.rhEmail, `[${config.serverName}] Nouvelle candidature — ${c.posteNom}`,
-    `Nouvelle candidature sur ${config.serverName}.\n\nPoste : ${c.posteNom} (${c.posteCat})\nCandidat : ${c.prenom} ${c.nom}\nRP : ${c.rp}\nEmail : ${c.email}\nDate : ${c.date}\n\nMOTIVATION :\n${c.motiv}\n\nCV : ${c.cv || 'Non fourni'}\n\nINFOS SUPP. :\n${c.extra || 'Aucune'}`);
+  await fsSend(config.rhEmail,
+    `[${config.serverName}] Nouvelle candidature — ${c.posteNom}`,
+    `Nouvelle candidature sur ${config.serverName}.\n\nPoste : ${c.posteNom} (${c.posteCat})\nCandidat : ${c.prenom} ${c.nom}\nRP : ${c.rp}\nEmail : ${c.email}\nDate : ${c.date}\n\nMOTIVATION :\n${c.motiv}\n\nCV : ${c.cv || 'Non fourni'}\n\nINFOS SUPP. :\n${c.extra || 'Aucune'}`
+  );
 }
+ 
 async function sendMailAccuse(c) {
-  await fsSend(c.email, `[${config.serverName}] Candidature reçue — ${c.posteNom}`,
-    `Bonjour ${c.prenom},\n\nNous avons bien reçu votre candidature et nous vous remercions de la confiance que vous nous témoignez.\n\notre dossier a été transmis à la personne en charge de ce recrutement, qui reviendra vers vous si votre candidature correspond à la recherche en cours. Si vous n'êtes pas contacté prochainement, veuillez considérer que votre profil ne correspond pas à la recherche en cours.
-
-Néanmoins, votre profil est susceptible de nous intéresser pour d'autres postes que nous aurions à pourvoir. \n\nAussi, sauf avis contraire de votre part, nous vous proposons de conserver votre dossier afin de pouvoir vous recontacter en fonction de futures opportunités. \n\nLe service des Ressources Humaines`);
+  await fsSend(c.email,
+    `[${config.serverName}] Candidature reçue — ${c.posteNom}`,
+    `Bonjour ${c.prenom},\n\nNous avons bien reçu votre candidature et nous vous remercions de la confiance que vous nous témoignez.\n\nVotre dossier a été transmis à la personne en charge de ce recrutement, qui reviendra vers vous si votre candidature correspond à la recherche en cours. Si vous n'êtes pas contacté prochainement, veuillez considérer que votre profil ne correspond pas à la recherche en cours.\n\nNéanmoins, votre profil est susceptible de nous intéresser pour d'autres postes que nous aurions à pourvoir.\n\nAussi, sauf avis contraire de votre part, nous vous proposons de conserver votre dossier afin de pouvoir vous recontacter en fonction de futures opportunités.\n\nLe service des Ressources Humaines`
+  );
 }
+ 
 async function sendMailCharge(c) {
-  await fsSend(c.email, `[${config.serverName}] Ta candidature est prise en charge`,
-    `Bonjour ${c.prenom},\n\nVotre candidature pour le poste ${c.posteNom} sur ${config.serverName} Nous accusons réception de votre candidature et nous vous remercions de l’intérêt que vous portez à la société. Votre dossier sera traité dans les plus brefs délais.\n\nCependant si aucune réponse ne vous a été formulée dans un délai de deux mois suivant votre candidature, considérez que votre dossier n'est pas retenu.
-
-Nous vous prions d’agréer, nos salutations les meilleures.\n\nLe service des Ressources Humaines`);
+  await fsSend(c.email,
+    `[${config.serverName}] Ta candidature est prise en charge`,
+    `Bonjour ${c.prenom},\n\nVotre candidature pour le poste ${c.posteNom} sur ${config.serverName} — Nous accusons réception de votre candidature et nous vous remercions de l'intérêt que vous portez à la société. Votre dossier sera traité dans les plus brefs délais.\n\nCependant si aucune réponse ne vous a été formulée dans un délai de deux mois suivant votre candidature, considérez que votre dossier n'est pas retenu.\n\nNous vous prions d'agréer, nos salutations les meilleures.\n\nLe service des Ressources Humaines`
+  );
 }
+ 
 async function sendMailAccept(c) {
-  await fsSend(c.email, `[${config.serverName}] Candidature acceptée !`,
-    `Bonjour ${c.prenom},\n\nvotre candidature pour le poste ${c.posteNom} sur ${config.serverName} a été acceptée.\n\nBienvenue dans l'équipe ! nous allons vous recontacter prochainement.\n\nLe service des Ressources Humaines`);
+  await fsSend(c.email,
+    `[${config.serverName}] Candidature acceptée !`,
+    `Bonjour ${c.prenom},\n\nVotre candidature pour le poste ${c.posteNom} sur ${config.serverName} a été acceptée.\n\nBienvenue dans l'équipe ! Nous allons vous recontacter prochainement.\n\nLe service des Ressources Humaines`
+  );
 }
+ 
 async function sendMailRefuse(c) {
-  await fsSend(c.email, `[${config.serverName}] Résultat de ta candidature`,
-    `Bonjour ${c.prenom},\n\nMalgré tout l'intérêt de votre candidature pour le poste ${c.posteNom} sur ${config.serverName}, nous sommes dans le regret de ne pas pouvoir donner suite à votre demande. Nous vous souhaitons de trouver satisfaction dans votre recherche.\n\nLe service des Ressources Humaines`);
+  await fsSend(c.email,
+    `[${config.serverName}] Résultat de ta candidature`,
+    `Bonjour ${c.prenom},\n\nMalgré tout l'intérêt de votre candidature pour le poste ${c.posteNom} sur ${config.serverName}, nous sommes dans le regret de ne pas pouvoir donner suite à votre demande. Nous vous souhaitons de trouver satisfaction dans votre recherche.\n\nLe service des Ressources Humaines`
+  );
 }
-
+ 
 /* ============================================================
    UTILITAIRES
    ============================================================ */
