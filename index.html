@@ -7,6 +7,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase CDN compat (fonctionne sans bundler) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -54,9 +58,7 @@
     <button class="filter-btn" data-cat="ANIMATION">ANIMATION</button>
     <button class="filter-btn" data-cat="DÉVELOPPEMENT">DÉVELOPPEMENT</button>
   </div>
-  <div class="postes-grid" id="postes-grid">
-    <!-- Injecté par JS -->
-  </div>
+  <div class="postes-grid" id="postes-grid"></div>
   <div class="empty-state" id="empty-postes" style="display:none">
     <p>Aucun poste disponible pour le moment.</p>
   </div>
@@ -104,7 +106,7 @@
       <div class="form-error" id="form-error" style="display:none"></div>
       <button type="submit" class="btn-submit" id="btn-submit-cand">
         <span id="btn-submit-text">Envoyer ma candidature</span>
-        <span id="btn-submit-loader" style="display:none">Envoi...</span>
+        <span id="btn-submit-loader" style="display:none">Envoi en cours...</span>
       </button>
     </form>
   </div>
@@ -143,7 +145,6 @@
     </div>
   </div>
 
-  <!-- Tab: Candidatures -->
   <div class="rh-content" id="tab-candidatures">
     <div class="rh-section-header">
       <h2>Candidatures</h2>
@@ -168,7 +169,6 @@
     <div class="empty-state" id="empty-cands" style="display:none"><p>Aucune candidature reçue.</p></div>
   </div>
 
-  <!-- Tab: Postes -->
   <div class="rh-content" id="tab-postes" style="display:none">
     <div class="rh-section-header">
       <h2>Gérer les postes</h2>
@@ -177,11 +177,10 @@
     <div class="postes-rh-list" id="postes-rh-list"></div>
   </div>
 
-  <!-- Tab: Config -->
   <div class="rh-content" id="tab-config" style="display:none">
     <div class="config-card">
       <h2>Configuration</h2>
-      <p class="config-info">Les mails sont envoyés automatiquement via Web3Forms. Il suffit de renseigner ton adresse email RH pour recevoir les candidatures.</p>
+      <p class="config-info">Renseigne ton adresse email RH pour recevoir les candidatures. Les données sont stockées dans Firebase (temps réel).</p>
       <div class="field">
         <label>Email RH (reçoit les nouvelles candidatures)</label>
         <input type="email" id="cfg-rh-email" placeholder="rh@tonserveur.com" />
@@ -210,7 +209,6 @@
       <h3 id="nouveau-poste-title">Nouveau poste</h3>
     </div>
     <form id="form-poste" novalidate>
-      <input type="hidden" id="poste-edit-id" />
       <div class="field">
         <label>Nom du poste</label>
         <input type="text" id="poste-nom" placeholder="ex: Modérateur Senior" required />
@@ -287,6 +285,6 @@
   <p id="footer-text">© 2025 — Espace Recrutement</p>
 </footer>
 
-<script type="module" src="app.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
