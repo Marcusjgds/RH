@@ -2,14 +2,15 @@
    APP.JS — Site de recrutement — Web3Forms
    ============================================================ */
 
-const W3F_KEY = 'd07718be-b87b-4917-8a28-d2da35c01a23';
-const W3F_URL = 'https://api.web3forms.com/submit';
+// Formsubmit — gratuit, illimité, envoie à n'importe quelle adresse
+// L'email RH est configuré dans Espace RH → Configuration
+const FORMSUBMIT_URL = (email) => `https://formsubmit.co/ajax/${encodeURIComponent(email)}`;
 
 // ── CONFIG PAR DÉFAUT
 const DEFAULT_CONFIG = {
-  rhEmail:    'marcus.tramecon@gmail.com',
-  serverName: 'RH SITE 11',
-  password:   'rh2026',
+  rhEmail:    '',
+  serverName: 'MON SERVEUR',
+  password:   'rh2025',
 };
 
 // ── STATE
@@ -467,116 +468,80 @@ function bindConfigForm() {
 }
 
 /* ============================================================
-   WEB3FORMS — ENVOI MAILS
+   FORMSUBMIT — ENVOI MAILS
+   Envoie à n'importe quelle adresse, gratuit et illimité.
+   Premier envoi = email de confirmation à activer une fois.
    ============================================================ */
-async function w3fSend(to, subject, body) {
+async function fsSend(to, subject, body) {
+  if (!to) { console.warn('[Formsubmit] Adresse destinataire manquante.'); return; }
   try {
-    const res = await fetch(W3F_URL, {
+    const res = await fetch(FORMSUBMIT_URL(to), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
-        access_key: W3F_KEY,
-        to,
         subject,
         message: body,
+        _subject: subject,
+        _captcha: 'false',
+        _template: 'box',
         from_name: config.serverName || 'Recrutement',
       }),
     });
     const data = await res.json();
-    if (data.success) {
-      console.log(`[Web3Forms] Mail envoyé à ${to} — "${subject}"`);
+    if (data.success === 'true' || data.success === true) {
+      console.log(`[Formsubmit] ✅ Mail envoyé à ${to}`);
     } else {
-      console.error('[Web3Forms] Erreur :', data.message);
+      console.error('[Formsubmit] ❌ Erreur :', JSON.stringify(data));
     }
   } catch(err) {
-    console.error('[Web3Forms] Erreur réseau :', err);
+    console.error('[Formsubmit] ❌ Erreur réseau :', err);
   }
 }
 
 // Mail aux RH : nouvelle candidature
 async function sendMailRH(c) {
-  if (!config.rhEmail) { console.warn('[Web3Forms] Email RH non configuré.'); return; }
-  const subject = `[${config.serverName}] Nouvelle candidature — ${c.posteNom}`;
-  const body = `
-Nouvelle candidature reçue sur ${config.serverName}.
-
-Poste : ${c.posteNom} (${c.posteCat})
-Candidat : ${c.prenom} ${c.nom}
-Pseudo RP : ${c.rp}
-Email : ${c.email}
-Date : ${c.date}
-
---- LETTRE DE MOTIVATION ---
-${c.motiv}
-
---- CV ---
-${c.cv || 'Non fourni'}
-
---- INFORMATIONS SUPPLÉMENTAIRES ---
-${c.extra || 'Aucune'}
-  `.trim();
-  await w3fSend(config.rhEmail, subject, body);
+  if (!config.rhEmail) { console.warn('[Formsubmit] Email RH non configuré dans la config.'); return; }
+  await fsSend(
+    config.rhEmail,
+    `[${config.serverName}] Nouvelle candidature — ${c.posteNom}`,
+    `Nouvelle candidature reçue sur ${config.serverName}.\n\nPoste : ${c.posteNom} (${c.posteCat})\nCandidat : ${c.prenom} ${c.nom}\nPseudo RP : ${c.rp}\nEmail : ${c.email}\nDate : ${c.date}\n\n--- LETTRE DE MOTIVATION ---\n${c.motiv}\n\n--- CV ---\n${c.cv || 'Non fourni'}\n\n--- INFORMATIONS SUPPLÉMENTAIRES ---\n${c.extra || 'Aucune'}`
+  );
 }
 
 // Accusé de réception au candidat
 async function sendMailAccuse(c) {
-  const subject = `[${config.serverName}] Candidature reçue — ${c.posteNom}`;
-  const body = `
-Bonjour ${c.prenom},
-
-Nous avons bien reçu ta candidature pour le poste : ${c.posteNom} sur ${config.serverName}.
-
-Notre équipe RH va l'examiner dans les plus brefs délais. Tu recevras une réponse par email.
-
-À bientôt,
-L'équipe RH de ${config.serverName}
-  `.trim();
-  await w3fSend(c.email, subject, body);
+  await fsSend(
+    c.email,
+    `[${config.serverName}] Candidature reçue — ${c.posteNom}`,
+    `Bonjour ${c.prenom},\n\nNous avons bien reçu ta candidature pour le poste : ${c.posteNom} sur ${config.serverName}.\n\nNotre équipe RH va l'examiner dans les plus brefs délais. Tu recevras une réponse par email.\n\nÀ bientôt,\nL'équipe RH de ${config.serverName}`
+  );
 }
 
 // Prise en charge
 async function sendMailCharge(c) {
-  const subject = `[${config.serverName}] Ta candidature est prise en charge`;
-  const body = `
-Bonjour ${c.prenom},
-
-Ta candidature pour le poste ${c.posteNom} sur ${config.serverName} va être prise en charge dans les plus brefs délais.
-
-Nous reviendrons vers toi très prochainement.
-
-L'équipe RH de ${config.serverName}
-  `.trim();
-  await w3fSend(c.email, subject, body);
+  await fsSend(
+    c.email,
+    `[${config.serverName}] Ta candidature est prise en charge`,
+    `Bonjour ${c.prenom},\n\nTa candidature pour le poste ${c.posteNom} sur ${config.serverName} va être prise en charge dans les plus brefs délais.\n\nNous reviendrons vers toi très prochainement.\n\nL'équipe RH de ${config.serverName}`
+  );
 }
 
 // Accepté
 async function sendMailAccept(c) {
-  const subject = `[${config.serverName}] Candidature acceptée 🎉`;
-  const body = `
-Bonjour ${c.prenom},
-
-Félicitations ! Ta candidature pour le poste ${c.posteNom} sur ${config.serverName} a été acceptée.
-
-Bienvenue dans l'équipe ! Un membre va te contacter prochainement pour la suite.
-
-L'équipe RH de ${config.serverName}
-  `.trim();
-  await w3fSend(c.email, subject, body);
+  await fsSend(
+    c.email,
+    `[${config.serverName}] Candidature acceptée !`,
+    `Bonjour ${c.prenom},\n\nFélicitations ! Ta candidature pour le poste ${c.posteNom} sur ${config.serverName} a été acceptée.\n\nBienvenue dans l'équipe ! Un membre va te contacter prochainement pour la suite.\n\nL'équipe RH de ${config.serverName}`
+  );
 }
 
 // Refusé
 async function sendMailRefuse(c) {
-  const subject = `[${config.serverName}] Résultat de ta candidature`;
-  const body = `
-Bonjour ${c.prenom},
-
-Après examen de ta candidature pour le poste ${c.posteNom} sur ${config.serverName}, nous ne sommes malheureusement pas en mesure de donner suite pour le moment.
-
-Nous te souhaitons bonne chance dans tes recherches et te remercions de l'intérêt porté à notre équipe.
-
-L'équipe RH de ${config.serverName}
-  `.trim();
-  await w3fSend(c.email, subject, body);
+  await fsSend(
+    c.email,
+    `[${config.serverName}] Résultat de ta candidature`,
+    `Bonjour ${c.prenom},\n\nAprès examen de ta candidature pour le poste ${c.posteNom} sur ${config.serverName}, nous ne sommes malheureusement pas en mesure de donner suite pour le moment.\n\nNous te souhaitons bonne chance et te remercions de l'intérêt porté à notre équipe.\n\nL'équipe RH de ${config.serverName}`
+  );
 }
 
 /* ============================================================
