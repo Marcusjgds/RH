@@ -7,9 +7,9 @@ const W3F_URL = 'https://api.web3forms.com/submit';
 
 // ── CONFIG PAR DÉFAUT
 const DEFAULT_CONFIG = {
-  rhEmail:    '',
-  serverName: 'MON SERVEUR',
-  password:   'rh2025',
+  rhEmail:    'marcus.tramecon@gmail.com',
+  serverName: 'RH SITE 11',
+  password:   'rh2026',
 };
 
 // ── STATE
