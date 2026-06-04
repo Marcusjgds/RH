@@ -480,19 +480,23 @@ async function sendMailRH(c) {
 }
 async function sendMailAccuse(c) {
   await fsSend(c.email, `[${config.serverName}] Candidature reçue — ${c.posteNom}`,
-    `Bonjour ${c.prenom},\n\nNous avons bien reçu ta candidature pour le poste : ${c.posteNom} sur ${config.serverName}.\n\nNotre équipe RH va l'examiner dans les plus brefs délais.\n\nÀ bientôt,\nL'équipe RH de ${config.serverName}`);
+    `Bonjour ${c.prenom},\n\nNous avons bien reçu votre candidature et nous vous remercions de la confiance que vous nous témoignez.\n\notre dossier a été transmis à la personne en charge de ce recrutement, qui reviendra vers vous si votre candidature correspond à la recherche en cours. Si vous n'êtes pas contacté prochainement, veuillez considérer que votre profil ne correspond pas à la recherche en cours.
+
+Néanmoins, votre profil est susceptible de nous intéresser pour d'autres postes que nous aurions à pourvoir. \n\nAussi, sauf avis contraire de votre part, nous vous proposons de conserver votre dossier afin de pouvoir vous recontacter en fonction de futures opportunités. \n\nLe service des Ressources Humaines`);
 }
 async function sendMailCharge(c) {
   await fsSend(c.email, `[${config.serverName}] Ta candidature est prise en charge`,
-    `Bonjour ${c.prenom},\n\nTa candidature pour le poste ${c.posteNom} sur ${config.serverName} va être prise en charge dans les plus brefs délais.\n\nNous reviendrons vers toi très prochainement.\n\nL'équipe RH de ${config.serverName}`);
+    `Bonjour ${c.prenom},\n\nVotre candidature pour le poste ${c.posteNom} sur ${config.serverName} Nous accusons réception de votre candidature et nous vous remercions de l’intérêt que vous portez à la société. Votre dossier sera traité dans les plus brefs délais.\n\nCependant si aucune réponse ne vous a été formulée dans un délai de deux mois suivant votre candidature, considérez que votre dossier n'est pas retenu.
+
+Nous vous prions d’agréer, nos salutations les meilleures.\n\nLe service des Ressources Humaines`);
 }
 async function sendMailAccept(c) {
   await fsSend(c.email, `[${config.serverName}] Candidature acceptée !`,
-    `Bonjour ${c.prenom},\n\nFélicitations ! Ta candidature pour le poste ${c.posteNom} sur ${config.serverName} a été acceptée.\n\nBienvenue dans l'équipe ! Un membre va te contacter prochainement.\n\nL'équipe RH de ${config.serverName}`);
+    `Bonjour ${c.prenom},\n\nvotre candidature pour le poste ${c.posteNom} sur ${config.serverName} a été acceptée.\n\nBienvenue dans l'équipe ! nous allons vous recontacter prochainement.\n\nLe service des Ressources Humaines`);
 }
 async function sendMailRefuse(c) {
   await fsSend(c.email, `[${config.serverName}] Résultat de ta candidature`,
-    `Bonjour ${c.prenom},\n\nAprès examen de ta candidature pour le poste ${c.posteNom} sur ${config.serverName}, nous ne sommes malheureusement pas en mesure de donner suite.\n\nMerci de l'intérêt porté à notre équipe.\n\nL'équipe RH de ${config.serverName}`);
+    `Bonjour ${c.prenom},\n\nMalgré tout l'intérêt de votre candidature pour le poste ${c.posteNom} sur ${config.serverName}, nous sommes dans le regret de ne pas pouvoir donner suite à votre demande. Nous vous souhaitons de trouver satisfaction dans votre recherche.\n\nLe service des Ressources Humaines`);
 }
 
 /* ============================================================
