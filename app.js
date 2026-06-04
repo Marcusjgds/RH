@@ -1,7 +1,7 @@
 /* ============================================================
    APP.JS — Site de recrutement — Firebase Firestore (temps réel)
    ============================================================ */
-
+ 
 // ── FIREBASE CONFIG (à remplir avec tes infos Firebase)
 const FIREBASE_CONFIG = {
   apiKey:            "REMPLACE_PAR_TON_API_KEY",
@@ -11,13 +11,13 @@ const FIREBASE_CONFIG = {
   messagingSenderId: "REMPLACE_PAR_TON_SENDER_ID",
   appId:             "REMPLACE_PAR_TON_APP_ID",
 };
-
+ 
 // ── FORMSUBMIT
 const FORMSUBMIT_URL = (email) => `https://formsubmit.co/ajax/${encodeURIComponent(email)}`;
-
+ 
 // ── CONFIG LOCALE (mot de passe, nom serveur, email RH — reste en localStorage)
 const DEFAULT_CONFIG = { rhEmail: '', serverName: 'MON SERVEUR', password: 'rh2025' };
-
+ 
 // ── STATE
 let config       = loadConfig();
 let postes       = [];
@@ -26,13 +26,13 @@ let currentPoste = null;
 let currentCand  = null;
 let editPosteId  = null;
 let db           = null;
-
+ 
 // ── FIREBASE IMPORTS
 import { initializeApp }                              from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getFirestore, collection, doc, addDoc,
          updateDoc, deleteDoc, onSnapshot,
          serverTimestamp, query, orderBy }            from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
+ 
 // ── INIT
 document.addEventListener('DOMContentLoaded', async () => {
   const app = initializeApp(FIREBASE_CONFIG);
@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   listenPostes();
   listenCandidatures();
 });
-
+ 
 /* ============================================================
    CONFIG LOCALE
    ============================================================ */
@@ -58,13 +58,13 @@ function loadConfig() {
   catch { return { ...DEFAULT_CONFIG }; }
 }
 function saveConfig() { localStorage.setItem('rh_config', JSON.stringify(config)); }
-
+ 
 function applyConfig() {
   const name = config.serverName || 'RECRUTEMENT';
   document.getElementById('site-name-nav').textContent = name;
   document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} — ${name}`;
 }
-
+ 
 /* ============================================================
    FIRESTORE — LISTENERS TEMPS RÉEL
    ============================================================ */
@@ -76,7 +76,7 @@ function listenPostes() {
     if (document.getElementById('rh-dashboard').style.display !== 'none') renderPostesRH();
   });
 }
-
+ 
 function listenCandidatures() {
   const q = query(collection(db, 'candidatures'), orderBy('createdAt', 'desc'));
   onSnapshot(q, snap => {
@@ -84,7 +84,7 @@ function listenCandidatures() {
     if (document.getElementById('rh-dashboard').style.display !== 'none') renderCandidaturesRH();
   });
 }
-
+ 
 /* ============================================================
    RENDU POSTES PUBLICS
    ============================================================ */
@@ -111,7 +111,7 @@ function renderPostesPublic(filterCat = 'all') {
     grid.appendChild(card);
   });
 }
-
+ 
 /* ============================================================
    FILTERS
    ============================================================ */
@@ -124,14 +124,14 @@ function bindFilters() {
     });
   });
 }
-
+ 
 /* ============================================================
    NAV
    ============================================================ */
 function bindNav() {
   document.getElementById('btn-open-rh-login').addEventListener('click', () => show('modal-rh-login'));
 }
-
+ 
 /* ============================================================
    MODAL POSTULER
    ============================================================ */
@@ -142,19 +142,19 @@ function openPostuler(poste) {
   document.getElementById('form-error').style.display = 'none';
   show('modal-postuler');
 }
-
+ 
 document.getElementById('close-postuler').addEventListener('click', () => hide('modal-postuler'));
 document.getElementById('modal-postuler').addEventListener('click', e => {
   if (e.target === e.currentTarget) hide('modal-postuler');
 });
-
+ 
 function bindFormCandidature() {
   document.getElementById('form-candidature').addEventListener('submit', async e => {
     e.preventDefault();
     const prenom = val('f-prenom'), nom = val('f-nom'), rp = val('f-rp'),
           email  = val('f-email'), motiv = val('f-motivation'),
           cv     = val('f-cv'),   extra = val('f-extra');
-
+ 
     if (!prenom || !nom || !rp || !email || !motiv) {
       showFormError('form-error', 'Merci de remplir tous les champs obligatoires.');
       return;
@@ -163,14 +163,14 @@ function bindFormCandidature() {
       showFormError('form-error', 'Adresse email invalide.');
       return;
     }
-
+ 
     const btnText   = document.getElementById('btn-submit-text');
     const btnLoader = document.getElementById('btn-submit-loader');
     const btnSubmit = document.getElementById('btn-submit-cand');
     btnText.style.display   = 'none';
     btnLoader.style.display = '';
     btnSubmit.disabled = true;
-
+ 
     const cand = {
       posteId:  currentPoste.id,
       posteNom: currentPoste.nom,
@@ -182,11 +182,11 @@ function bindFormCandidature() {
       date:   new Date().toLocaleDateString('fr-FR'),
       createdAt: serverTimestamp(),
     };
-
+ 
     await addDoc(collection(db, 'candidatures'), cand);
     await sendMailRH({ ...cand, id: 'new' });
     await sendMailAccuse(cand);
-
+ 
     btnText.style.display   = '';
     btnLoader.style.display = 'none';
     btnSubmit.disabled = false;
@@ -194,7 +194,7 @@ function bindFormCandidature() {
     toast('✓ Candidature envoyée avec succès !', 'success');
   });
 }
-
+ 
 /* ============================================================
    RH LOGIN
    ============================================================ */
@@ -213,7 +213,7 @@ function bindRHLogin() {
     }
   });
 }
-
+ 
 /* ============================================================
    DASHBOARD RH
    ============================================================ */
@@ -227,7 +227,7 @@ function openDashboard() {
   renderPostesRH();
   fillConfigForm();
 }
-
+ 
 function closeDashboard() {
   document.getElementById('navbar').style.display  = '';
   document.getElementById('hero').style.display    = '';
@@ -235,9 +235,9 @@ function closeDashboard() {
   document.querySelector('footer').style.display   = '';
   document.getElementById('rh-dashboard').style.display = 'none';
 }
-
+ 
 document.getElementById('btn-logout').addEventListener('click', () => closeDashboard());
-
+ 
 function bindRHTabs() {
   document.querySelectorAll('.rh-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -248,7 +248,7 @@ function bindRHTabs() {
     });
   });
 }
-
+ 
 /* ── CANDIDATURES RH ── */
 function renderCandidaturesRH() {
   const statusFilter = document.getElementById('filter-status').value;
@@ -258,13 +258,13 @@ function renderCandidaturesRH() {
     if (catFilter    !== 'all' && c.posteCat !== catFilter)  return false;
     return true;
   });
-
+ 
   const container = document.getElementById('candidatures-list');
   const empty     = document.getElementById('empty-cands');
   container.innerHTML = '';
   if (list.length === 0) { empty.style.display = ''; return; }
   empty.style.display = 'none';
-
+ 
   list.forEach(c => {
     const card = document.createElement('div');
     card.className = 'cand-card';
@@ -287,10 +287,10 @@ function renderCandidaturesRH() {
     container.appendChild(card);
   });
 }
-
+ 
 document.getElementById('filter-status').addEventListener('change', renderCandidaturesRH);
 document.getElementById('filter-cat-cand').addEventListener('change', renderCandidaturesRH);
-
+ 
 /* ── POSTES RH ── */
 function renderPostesRH() {
   const container = document.getElementById('postes-rh-list');
@@ -318,7 +318,7 @@ function renderPostesRH() {
     container.appendChild(row);
   });
 }
-
+ 
 /* ── NOUVEAU / MODIFIER POSTE ── */
 document.getElementById('btn-nouveau-poste').addEventListener('click', () => {
   editPosteId = null;
@@ -327,12 +327,12 @@ document.getElementById('btn-nouveau-poste').addEventListener('click', () => {
   document.getElementById('form-poste').reset();
   show('modal-nouveau-poste');
 });
-
+ 
 document.getElementById('close-nouveau-poste').addEventListener('click', () => hide('modal-nouveau-poste'));
 document.getElementById('modal-nouveau-poste').addEventListener('click', e => {
   if (e.target === e.currentTarget) hide('modal-nouveau-poste');
 });
-
+ 
 function openEditPoste(p) {
   editPosteId = p.id;
   document.getElementById('nouveau-poste-title').textContent = 'Modifier le poste';
@@ -343,7 +343,7 @@ function openEditPoste(p) {
   document.getElementById('poste-prereq').value = p.prereq || '';
   show('modal-nouveau-poste');
 }
-
+ 
 function bindFormPoste() {
   document.getElementById('form-poste').addEventListener('submit', async e => {
     e.preventDefault();
@@ -352,7 +352,7 @@ function bindFormPoste() {
     const desc   = val('poste-desc');
     const prereq = val('poste-prereq');
     if (!nom || !cat || !desc) return;
-
+ 
     if (editPosteId) {
       await updateDoc(doc(db, 'postes', editPosteId), { nom, cat, desc, prereq });
     } else {
@@ -362,13 +362,13 @@ function bindFormPoste() {
     toast(editPosteId ? '✓ Poste modifié' : '✓ Poste créé', 'success');
   });
 }
-
+ 
 async function deletePoste(id) {
   if (!confirm('Supprimer ce poste ?')) return;
   await deleteDoc(doc(db, 'postes', id));
   toast('Poste supprimé', 'success');
 }
-
+ 
 /* ============================================================
    DETAIL CANDIDATURE
    ============================================================ */
@@ -378,7 +378,7 @@ function bindDetailModal() {
     if (e.target === e.currentTarget) hide('modal-cand-detail');
   });
 }
-
+ 
 function openCandDetail(c) {
   currentCand = c;
   document.getElementById('detail-cat').textContent        = c.posteCat;
@@ -396,7 +396,7 @@ function openCandDetail(c) {
   renderDetailActions(c);
   show('modal-cand-detail');
 }
-
+ 
 function renderDetailActions(c) {
   const container = document.getElementById('detail-actions');
   container.innerHTML = '';
@@ -410,7 +410,7 @@ function renderDetailActions(c) {
   if (c.statut === 'accepte') container.innerHTML = `<span style="color:var(--green);font-weight:700;font-size:13px;letter-spacing:0.05em">✓ CANDIDATURE ACCEPTÉE</span>`;
   if (c.statut === 'refuse')  container.innerHTML = `<span style="color:var(--red);font-weight:700;font-size:13px;letter-spacing:0.05em">✕ CANDIDATURE REFUSÉE</span>`;
 }
-
+ 
 function makeActionBtn(label, cls, handler) {
   const btn = document.createElement('button');
   btn.className = `btn-action ${cls}`;
@@ -418,7 +418,7 @@ function makeActionBtn(label, cls, handler) {
   btn.addEventListener('click', handler);
   return btn;
 }
-
+ 
 async function actionCand(c, newStatut) {
   await updateDoc(doc(db, 'candidatures', c.id), { statut: newStatut });
   const updated = { ...c, statut: newStatut };
@@ -433,7 +433,7 @@ async function actionCand(c, newStatut) {
     newStatut === 'refuse' ? 'error' : 'success'
   );
 }
-
+ 
 /* ============================================================
    CONFIG FORM
    ============================================================ */
@@ -442,7 +442,7 @@ function fillConfigForm() {
   document.getElementById('cfg-server-name').value = config.serverName || '';
   document.getElementById('cfg-password').value    = '';
 }
-
+ 
 function bindConfigForm() {
   document.getElementById('btn-save-config').addEventListener('click', () => {
     config.rhEmail    = val('cfg-rh-email');
@@ -456,7 +456,7 @@ function bindConfigForm() {
     setTimeout(() => ok.style.display = 'none', 3000);
   });
 }
-
+ 
 /* ============================================================
    FORMSUBMIT — ENVOI MAILS
    ============================================================ */
@@ -472,7 +472,7 @@ async function fsSend(to, subject, body) {
     console.log(data.success ? `[Mail] ✅ Envoyé à ${to}` : `[Mail] ❌ Erreur : ${data.message}`);
   } catch(err) { console.error('[Mail] ❌ Erreur réseau :', err); }
 }
-
+ 
 async function sendMailRH(c) {
   if (!config.rhEmail) return;
   await fsSend(config.rhEmail, `[${config.serverName}] Nouvelle candidature — ${c.posteNom}`,
