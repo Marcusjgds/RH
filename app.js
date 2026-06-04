@@ -1,28 +1,24 @@
 /* ============================================================
-   APP.JS — Site de recrutement
+   APP.JS — Site de recrutement — Web3Forms
    ============================================================ */
 
-// ── CONFIG PAR DÉFAUT (modifiable dans l'espace RH → Configuration)
+const W3F_KEY = 'd07718be-b87b-4917-8a28-d2da35c01a23';
+const W3F_URL = 'https://api.web3forms.com/submit';
+
+// ── CONFIG PAR DÉFAUT
 const DEFAULT_CONFIG = {
-  publicKey:   '',
-  serviceId:   '',
-  tplRH:       '',
-  tplAccuse:   '',
-  tplCharge:   '',
-  tplAccept:   '',
-  tplRefuse:   '',
-  rhEmail:     '',
-  serverName:  'MON SERVEUR',
-  password:    'rh2025',
+  rhEmail:    '',
+  serverName: 'MON SERVEUR',
+  password:   'rh2025',
 };
 
 // ── STATE
-let config     = loadConfig();
-let postes     = loadPostes();
+let config       = loadConfig();
+let postes       = loadPostes();
 let candidatures = loadCandidatures();
-let currentPoste = null;   // poste sélectionné pour postuler
-let currentCand  = null;   // candidature ouverte dans le détail
-let editPosteId  = null;   // id du poste en cours d'édition
+let currentPoste = null;
+let currentCand  = null;
+let editPosteId  = null;
 
 // ── INIT
 document.addEventListener('DOMContentLoaded', () => {
@@ -60,15 +56,12 @@ function loadCandidatures() {
 function saveCandidatures() { localStorage.setItem('rh_candidatures', JSON.stringify(candidatures)); }
 
 /* ============================================================
-   APPLIQUE LA CONFIG (nom du serveur, emailjs)
+   CONFIG
    ============================================================ */
 function applyConfig() {
   const name = config.serverName || 'RECRUTEMENT';
   document.getElementById('site-name-nav').textContent = name;
   document.getElementById('footer-text').textContent = `© ${new Date().getFullYear()} — ${name}`;
-  if (config.publicKey) {
-    emailjs.init({ publicKey: config.publicKey });
-  }
 }
 
 /* ============================================================
@@ -78,11 +71,9 @@ function renderPostesPublic(filterCat = 'all') {
   const grid  = document.getElementById('postes-grid');
   const empty = document.getElementById('empty-postes');
   const list  = filterCat === 'all' ? postes : postes.filter(p => p.cat === filterCat);
-
   grid.innerHTML = '';
   if (list.length === 0) { empty.style.display = ''; return; }
   empty.style.display = 'none';
-
   list.forEach(p => {
     const card = document.createElement('div');
     card.className = 'poste-card';
@@ -117,9 +108,7 @@ function bindFilters() {
    NAV
    ============================================================ */
 function bindNav() {
-  document.getElementById('btn-open-rh-login').addEventListener('click', () => {
-    show('modal-rh-login');
-  });
+  document.getElementById('btn-open-rh-login').addEventListener('click', () => show('modal-rh-login'));
 }
 
 /* ============================================================
@@ -162,26 +151,24 @@ function bindFormCandidature() {
     btnSubmit.disabled = true;
 
     const cand = {
-      id:       Date.now().toString(),
+      id: Date.now().toString(),
       posteId:  currentPoste.id,
       posteNom: currentPoste.nom,
       posteCat: currentPoste.cat,
       prenom, nom, rp, email, motiv, cv, extra,
-      statut:   'en_attente',
-      date:     new Date().toLocaleDateString('fr-FR'),
+      statut: 'en_attente',
+      date: new Date().toLocaleDateString('fr-FR'),
     };
 
     candidatures.push(cand);
     saveCandidatures();
 
-    // Envoi mails
-    await sendMailCandidature(cand);
+    await sendMailRH(cand);
     await sendMailAccuse(cand);
 
     btnText.style.display   = '';
     btnLoader.style.display = 'none';
     btnSubmit.disabled = false;
-
     hide('modal-postuler');
     toast('✓ Candidature envoyée avec succès !', 'success');
   });
@@ -211,10 +198,10 @@ function bindRHLogin() {
    DASHBOARD RH
    ============================================================ */
 function openDashboard() {
-  document.getElementById('navbar').style.display = 'none';
-  document.getElementById('hero').style.display   = 'none';
-  document.getElementById('postes').style.display = 'none';
-  document.querySelector('footer').style.display  = 'none';
+  document.getElementById('navbar').style.display  = 'none';
+  document.getElementById('hero').style.display    = 'none';
+  document.getElementById('postes').style.display  = 'none';
+  document.querySelector('footer').style.display   = 'none';
   document.getElementById('rh-dashboard').style.display = '';
   renderCandidaturesRH();
   renderPostesRH();
@@ -222,10 +209,10 @@ function openDashboard() {
 }
 
 function closeDashboard() {
-  document.getElementById('navbar').style.display = '';
-  document.getElementById('hero').style.display   = '';
-  document.getElementById('postes').style.display = '';
-  document.querySelector('footer').style.display  = '';
+  document.getElementById('navbar').style.display  = '';
+  document.getElementById('hero').style.display    = '';
+  document.getElementById('postes').style.display  = '';
+  document.querySelector('footer').style.display   = '';
   document.getElementById('rh-dashboard').style.display = 'none';
 }
 
@@ -259,7 +246,6 @@ function renderCandidaturesRH() {
   if (list.length === 0) { empty.style.display = ''; return; }
   empty.style.display = 'none';
 
-  // tri : les plus récentes en premier
   [...list].reverse().forEach(c => {
     const card = document.createElement('div');
     card.className = 'cand-card';
@@ -283,7 +269,6 @@ function renderCandidaturesRH() {
   });
 }
 
-// Rebind les filtres RH
 document.getElementById('filter-status').addEventListener('change', renderCandidaturesRH);
 document.getElementById('filter-cat-cand').addEventListener('change', renderCandidaturesRH);
 
@@ -384,18 +369,18 @@ function bindDetailModal() {
 
 function openCandDetail(c) {
   currentCand = c;
-  document.getElementById('detail-cat').textContent         = c.posteCat;
-  document.getElementById('detail-cat').className           = `modal-tag cat-badge cat-${c.posteCat}`;
-  document.getElementById('detail-poste').textContent       = c.posteNom;
-  document.getElementById('detail-nom').textContent         = `${c.prenom} ${c.nom}`;
-  document.getElementById('detail-rp').textContent          = c.rp;
-  document.getElementById('detail-email').textContent       = c.email;
-  document.getElementById('detail-motivation').textContent  = c.motiv;
-  document.getElementById('detail-extra').textContent       = c.extra || '—';
+  document.getElementById('detail-cat').textContent   = c.posteCat;
+  document.getElementById('detail-cat').className     = `modal-tag cat-badge cat-${c.posteCat}`;
+  document.getElementById('detail-poste').textContent = c.posteNom;
+  document.getElementById('detail-nom').textContent   = `${c.prenom} ${c.nom}`;
+  document.getElementById('detail-rp').textContent    = c.rp;
+  document.getElementById('detail-email').textContent = c.email;
+  document.getElementById('detail-motivation').textContent = c.motiv;
+  document.getElementById('detail-extra').textContent = c.extra || '—';
 
   const cvEl = document.getElementById('detail-cv');
   if (c.cv) {
-    cvEl.innerHTML = `<a href="${esc(c.cv)}" target="_blank" style="color:var(--accent)">${esc(c.cv)}</a>`;
+    cvEl.innerHTML = `<a href="${esc(c.cv)}" target="_blank" style="color:var(--yellow)">${esc(c.cv)}</a>`;
   } else {
     cvEl.textContent = '—';
   }
@@ -422,10 +407,10 @@ function renderDetailActions(c) {
     }));
   }
   if (c.statut === 'accepte') {
-    container.innerHTML = `<span style="color:var(--green);font-weight:600">✓ Candidature acceptée</span>`;
+    container.innerHTML = `<span style="color:var(--green);font-weight:700;font-size:13px;letter-spacing:0.05em">✓ CANDIDATURE ACCEPTÉE</span>`;
   }
   if (c.statut === 'refuse') {
-    container.innerHTML = `<span style="color:var(--red);font-weight:600">✕ Candidature refusée</span>`;
+    container.innerHTML = `<span style="color:var(--red);font-weight:700;font-size:13px;letter-spacing:0.05em">✕ CANDIDATURE REFUSÉE</span>`;
   }
 }
 
@@ -444,7 +429,6 @@ async function actionCand(c, newStatut) {
   saveCandidatures();
   currentCand = candidatures[idx];
 
-  // Envoi mail
   if (newStatut === 'en_charge') await sendMailCharge(candidatures[idx]);
   if (newStatut === 'accepte')   await sendMailAccept(candidatures[idx]);
   if (newStatut === 'refuse')    await sendMailRefuse(candidatures[idx]);
@@ -463,13 +447,6 @@ async function actionCand(c, newStatut) {
    CONFIG FORM
    ============================================================ */
 function fillConfigForm() {
-  document.getElementById('cfg-public-key').value  = config.publicKey  || '';
-  document.getElementById('cfg-service-id').value  = config.serviceId  || '';
-  document.getElementById('cfg-tpl-rh').value      = config.tplRH      || '';
-  document.getElementById('cfg-tpl-accuse').value  = config.tplAccuse  || '';
-  document.getElementById('cfg-tpl-charge').value  = config.tplCharge  || '';
-  document.getElementById('cfg-tpl-accept').value  = config.tplAccept  || '';
-  document.getElementById('cfg-tpl-refuse').value  = config.tplRefuse  || '';
   document.getElementById('cfg-rh-email').value    = config.rhEmail    || '';
   document.getElementById('cfg-server-name').value = config.serverName || '';
   document.getElementById('cfg-password').value    = '';
@@ -477,15 +454,8 @@ function fillConfigForm() {
 
 function bindConfigForm() {
   document.getElementById('btn-save-config').addEventListener('click', () => {
-    config.publicKey   = val('cfg-public-key');
-    config.serviceId   = val('cfg-service-id');
-    config.tplRH       = val('cfg-tpl-rh');
-    config.tplAccuse   = val('cfg-tpl-accuse');
-    config.tplCharge   = val('cfg-tpl-charge');
-    config.tplAccept   = val('cfg-tpl-accept');
-    config.tplRefuse   = val('cfg-tpl-refuse');
-    config.rhEmail     = val('cfg-rh-email');
-    config.serverName  = val('cfg-server-name') || 'MON SERVEUR';
+    config.rhEmail    = val('cfg-rh-email');
+    config.serverName = val('cfg-server-name') || 'MON SERVEUR';
     const newPwd = val('cfg-password');
     if (newPwd) config.password = newPwd;
     saveConfig();
@@ -497,89 +467,116 @@ function bindConfigForm() {
 }
 
 /* ============================================================
-   EMAILJS — ENVOI MAILS
+   WEB3FORMS — ENVOI MAILS
    ============================================================ */
-function ejsReady() {
-  if (!config.publicKey || !config.serviceId) {
-    console.warn('[EmailJS] Public Key ou Service ID manquant.');
-    return false;
-  }
-  return true;
-}
-
-async function sendMailCandidature(c) {
-  if (!ejsReady() || !config.tplRH || !config.rhEmail) {
-    console.warn('[EmailJS] Config mail RH incomplète.');
-    return;
-  }
+async function w3fSend(to, subject, body) {
   try {
-    const res = await emailjs.send(config.serviceId, config.tplRH, {
-      to_email:       config.rhEmail,
-      server_name:    config.serverName,
-      poste_nom:      c.posteNom,
-      poste_cat:      c.posteCat,
-      candidat_nom:   `${c.prenom} ${c.nom}`,
-      candidat_rp:    c.rp,
-      candidat_email: c.email,
-      motivation:     c.motiv,
-      cv:             c.cv || 'Non fourni',
-      extra:          c.extra || 'Aucune',
-      date:           c.date,
+    const res = await fetch(W3F_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({
+        access_key: W3F_KEY,
+        to,
+        subject,
+        message: body,
+        from_name: config.serverName || 'Recrutement',
+      }),
     });
-    console.log('[EmailJS] Mail RH envoyé :', res.status);
-  } catch(err) { console.error('[EmailJS] Erreur mail RH :', err); }
+    const data = await res.json();
+    if (data.success) {
+      console.log(`[Web3Forms] Mail envoyé à ${to} — "${subject}"`);
+    } else {
+      console.error('[Web3Forms] Erreur :', data.message);
+    }
+  } catch(err) {
+    console.error('[Web3Forms] Erreur réseau :', err);
+  }
 }
 
+// Mail aux RH : nouvelle candidature
+async function sendMailRH(c) {
+  if (!config.rhEmail) { console.warn('[Web3Forms] Email RH non configuré.'); return; }
+  const subject = `[${config.serverName}] Nouvelle candidature — ${c.posteNom}`;
+  const body = `
+Nouvelle candidature reçue sur ${config.serverName}.
+
+Poste : ${c.posteNom} (${c.posteCat})
+Candidat : ${c.prenom} ${c.nom}
+Pseudo RP : ${c.rp}
+Email : ${c.email}
+Date : ${c.date}
+
+--- LETTRE DE MOTIVATION ---
+${c.motiv}
+
+--- CV ---
+${c.cv || 'Non fourni'}
+
+--- INFORMATIONS SUPPLÉMENTAIRES ---
+${c.extra || 'Aucune'}
+  `.trim();
+  await w3fSend(config.rhEmail, subject, body);
+}
+
+// Accusé de réception au candidat
 async function sendMailAccuse(c) {
-  if (!ejsReady() || !config.tplAccuse) { console.warn('[EmailJS] Template accusé manquant.'); return; }
-  try {
-    const res = await emailjs.send(config.serviceId, config.tplAccuse, {
-      to_email:    c.email,
-      to_name:     c.prenom,
-      server_name: config.serverName,
-      poste_nom:   c.posteNom,
-    });
-    console.log('[EmailJS] Accusé de réception envoyé :', res.status);
-  } catch(err) { console.error('[EmailJS] Erreur accusé :', err); }
+  const subject = `[${config.serverName}] Candidature reçue — ${c.posteNom}`;
+  const body = `
+Bonjour ${c.prenom},
+
+Nous avons bien reçu ta candidature pour le poste : ${c.posteNom} sur ${config.serverName}.
+
+Notre équipe RH va l'examiner dans les plus brefs délais. Tu recevras une réponse par email.
+
+À bientôt,
+L'équipe RH de ${config.serverName}
+  `.trim();
+  await w3fSend(c.email, subject, body);
 }
 
+// Prise en charge
 async function sendMailCharge(c) {
-  if (!ejsReady() || !config.tplCharge) { console.warn('[EmailJS] Template prise en charge manquant.'); return; }
-  try {
-    const res = await emailjs.send(config.serviceId, config.tplCharge, {
-      to_email:    c.email,
-      to_name:     c.prenom,
-      server_name: config.serverName,
-      poste_nom:   c.posteNom,
-    });
-    console.log('[EmailJS] Mail prise en charge envoyé :', res.status);
-  } catch(err) { console.error('[EmailJS] Erreur prise en charge :', err); }
+  const subject = `[${config.serverName}] Ta candidature est prise en charge`;
+  const body = `
+Bonjour ${c.prenom},
+
+Ta candidature pour le poste ${c.posteNom} sur ${config.serverName} va être prise en charge dans les plus brefs délais.
+
+Nous reviendrons vers toi très prochainement.
+
+L'équipe RH de ${config.serverName}
+  `.trim();
+  await w3fSend(c.email, subject, body);
 }
 
+// Accepté
 async function sendMailAccept(c) {
-  if (!ejsReady() || !config.tplAccept) { console.warn('[EmailJS] Template accepté manquant.'); return; }
-  try {
-    const res = await emailjs.send(config.serviceId, config.tplAccept, {
-      to_email:    c.email,
-      to_name:     c.prenom,
-      server_name: config.serverName,
-      poste_nom:   c.posteNom,
-    });
-    console.log('[EmailJS] Mail accepté envoyé :', res.status);
-  } catch(err) { console.error('[EmailJS] Erreur accepté :', err); }
+  const subject = `[${config.serverName}] Candidature acceptée 🎉`;
+  const body = `
+Bonjour ${c.prenom},
+
+Félicitations ! Ta candidature pour le poste ${c.posteNom} sur ${config.serverName} a été acceptée.
+
+Bienvenue dans l'équipe ! Un membre va te contacter prochainement pour la suite.
+
+L'équipe RH de ${config.serverName}
+  `.trim();
+  await w3fSend(c.email, subject, body);
 }
 
+// Refusé
 async function sendMailRefuse(c) {
-  if (!ejsReady() || !config.tplRefuse) { console.warn('[EmailJS] Template refusé manquant.'); return; }
-  try {
-    const res = await emailjs.send(config.serviceId, config.tplRefuse, {
-      to_email:    c.email,
-      to_name:     c.prenom,
-      server_name: config.serverName,
-      poste_nom:   c.posteNom,
-    });
-    console.log('[EmailJS] Mail refusé envoyé :', res.status);
-  } catch(err) { console.error('[EmailJS] Erreur refusé :', err); }
+  const subject = `[${config.serverName}] Résultat de ta candidature`;
+  const body = `
+Bonjour ${c.prenom},
+
+Après examen de ta candidature pour le poste ${c.posteNom} sur ${config.serverName}, nous ne sommes malheureusement pas en mesure de donner suite pour le moment.
+
+Nous te souhaitons bonne chance dans tes recherches et te remercions de l'intérêt porté à notre équipe.
+
+L'équipe RH de ${config.serverName}
+  `.trim();
+  await w3fSend(c.email, subject, body);
 }
 
 /* ============================================================
