@@ -15,7 +15,7 @@ const FIREBASE_CONFIG = {
 
 const FORMSUBMIT_URL = (email) => `https://formsubmit.co/ajax/${encodeURIComponent(email)}`;
 
-const DEFAULT_CONFIG = { rhEmail: '', serverName: 'MON SERVEUR', password: 'rh2025' };
+const DEFAULT_CONFIG = { rhEmail: '', serverName: 'SCP SITE 11', password: 'RH2026' };
 
 let config       = loadConfig();
 let postes       = [];
